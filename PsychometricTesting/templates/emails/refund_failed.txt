@@ -1,0 +1,19 @@
+Dear User,
+
+We regret to inform you that the refund process for
+the following Payment ID has encountered an issue:
+
+Payment ID: {{ payment_intent_id }}
+
+Our support team is actively reviewing the matter
+and will reach out to you within two working days
+with further updates or a resolution.
+
+We appreciate your understanding and apologize
+for any inconvenience caused. If you have any
+immediate concerns, please feel free to contact
+us at:
+support@big5test.org
+
+Best regards,
+Big5Test Support Team

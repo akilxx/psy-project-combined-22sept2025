@@ -1,0 +1,32 @@
+# ---- Python/Django (backend) ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+db.sqlite3
+*.sqlite3
+/media/
+/staticfiles/
+*.log
+
+# ---- Node/Vite (frontend) ----
+node_modules/
+dist/
+.vite/
+coverage/
+npm-debug.log*
+yarn-*.log
+pnpm-*.log
+
+# ---- Env & secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- OS/IDE ----
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

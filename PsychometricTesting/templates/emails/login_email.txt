@@ -1,0 +1,10 @@
+Hello,
+
+Thank you for requesting a verification code. Your verification code is: {{ otp_code }}
+
+Please enter this code to login.
+
+If you did not initiate this request, please ignore this email.
+
+Best regards,
+Big5test

@@ -1,0 +1,20 @@
+Dear Customer ,
+
+We are writing to inform you that a refund has
+been successfully initiated for your payment made
+via Stripe, following your recent request.
+
+Payment ID: {{ payment_intent_id }}
+
+Our team will provide you with an update on
+the status of your refund shortly.
+
+Should you have any questions or require
+further assistance, please do not hesitate
+to reach out to us at:
+support@big5test.org
+
+Thank you for your understanding.
+
+Best regards,
+Big5Test Support Team

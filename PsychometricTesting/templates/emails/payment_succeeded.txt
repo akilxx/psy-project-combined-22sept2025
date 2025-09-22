@@ -1,0 +1,14 @@
+Dear Customer ,
+
+We are pleased to inform you that your payment
+via Stripe has been successfully processed.
+
+Payment ID: {{ payment_intent_id }}
+
+Thank you for your transaction. If you have
+any questions or require assistance, please
+do not hesitate to contact us at:
+support@big5test.org
+
+Best regards,
+Big5Test Support Team

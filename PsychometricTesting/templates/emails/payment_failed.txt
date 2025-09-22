@@ -1,0 +1,17 @@
+Dear Customer,
+
+We regret to inform you that your
+payment via Stripe could not be processed.
+
+Payment ID: {{ payment_intent_id }}
+
+Please ensure that your payment details are
+correct and try again. If the issue persists,
+feel free to contact us at:
+support@big5test.org
+
+We apologize for any inconvenience this may
+have caused and appreciate your understanding.
+
+Best regards,
+Big5Test Support Team

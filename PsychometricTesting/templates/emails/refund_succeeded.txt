@@ -1,0 +1,22 @@
+Dear Customer,
+
+We are pleased to inform you that your
+refund has been successfully processed.
+
+Payment ID: {{ payment_intent_id }}
+
+The refunded amount should reflect in
+your account shortly. Please note that
+the processing time may vary depending
+on your payment provider.
+
+If you have any questions or require
+further assistance, do not hesitate
+to reach out to us at:
+support@big5test.org
+
+Thank you for your patience and
+understanding.
+
+Best regards,
+Big5Test Support Team

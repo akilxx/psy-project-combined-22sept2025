@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Payment Succeeded</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:#f6f6f6;">
+    <div style="max-width:600px; margin:30px auto; padding:20px; background-color:#ffffff; font-family:Arial, sans-serif; color:#333333; line-height:1.5;">
+      <p style="margin:0 0 15px 0;">Dear Customer,</p>
+      <p style="margin:0 0 15px 0;">
+        We are pleased to inform you that your payment via Stripe has been successfully processed.
+        Thank you for your transaction.
+      </p>
+      <p style="margin:0 0 15px 0;">
+        If you have any questions or require assistance, please do not hesitate to contact us at:
+        <a href="mailto:support@big5test.org" style="color:#007bff; text-decoration:underline;">support@big5test.org</a>
+      </p>
+      <p style="margin:0 0 15px 0;">
+        <strong>We value your feedback!</strong> Please rate your experience by clicking on one of the options below:
+      </p>
+      <div style="margin:0 0 15px 0;">
+        <a href="{{ domain }}/rating/feedback/?token={{ feedback_token }}&rating=1" style="color:#ffcc00; text-decoration:none; font-size:16px;">Poor</a>&nbsp;&bull;&nbsp;
+        <a href="{{ domain }}/rating/feedback/?token={{ feedback_token }}&rating=2" style="color:#ffcc00; text-decoration:none; font-size:16px;">Fair</a>&nbsp;&bull;&nbsp;
+        <a href="{{ domain }}/rating/feedback/?token={{ feedback_token }}&rating=3" style="color:#ffcc00; text-decoration:none; font-size:16px;">Average</a>&nbsp;&bull;&nbsp;
+        <a href="{{ domain }}/rating/feedback/?token={{ feedback_token }}&rating=4" style="color:#ffcc00; text-decoration:none; font-size:16px;">Good</a>&nbsp;&bull;&nbsp;
+        <a href="{{ domain }}/rating/feedback/?token={{ feedback_token }}&rating=5" style="color:#ffcc00; text-decoration:none; font-size:16px;">Excellent</a>
+      </div>
+      <p style="margin:0;">
+        Best regards,<br>
+        Big5Test Support Team
+      </p>
+    </div>
+  </body>
+</html>

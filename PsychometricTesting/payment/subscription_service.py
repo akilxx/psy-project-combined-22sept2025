@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone as dt_timezone
 from typing import Optional
 
 import stripe
@@ -203,7 +203,7 @@ def handle_subscription_webhook_event(event_type: str, data: dict) -> dict:
 def _parse_timestamp(timestamp: Optional[int]) -> Optional[datetime]:
     if not timestamp:
         return None
-    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    return datetime.fromtimestamp(timestamp, tz=dt_timezone.utc)
 
 
 def _advance_subscription_period(subscription: UserSubscription) -> None:

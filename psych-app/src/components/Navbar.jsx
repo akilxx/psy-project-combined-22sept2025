@@ -12,7 +12,14 @@ export default function Navbar() {
     <nav className="flex items-center justify-between px-6 py-3 bg-transparent text-primary">
       <Link to="/" className="text-xl font-semibold">Big5Test</Link>
       <div className="flex gap-4 items-center">
-        {user && <span>{user.email}</span>}
+        {user && (
+          <>
+            <Link to="/subscription" className="text-sm font-medium hover:text-indigo-600">
+              Subscription
+            </Link>
+            <span className="text-sm text-slate-600">{user.email}</span>
+          </>
+        )}
         {user ? (
           <button onClick={logout} className="flex items-center gap-1">
             <ArrowRightOnRectangleIcon className="w-5 h-5" /> Logout

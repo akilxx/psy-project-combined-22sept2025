@@ -13,6 +13,7 @@ import TestStart from './pages/TestStart';
 import TestRunner from './pages/TestRunner';
 import Results from './pages/Results';
 import PaymentElementPage from './pages/PaymentElementPage';
+import SubscriptionPage from './pages/Subscription';
 
 
 
@@ -41,8 +42,17 @@ export default function App() {
           <Route path="/test/:resultId" element={<TestRunner />} />
           <Route path="/results/:resultId" element={<Results />} />
 
-          
+
           <Route path="/pay/:resultId" element={<PaymentElementPage />} />
+
+          <Route
+            path="/subscription"
+            element={
+              <ProtectedRoute>
+                <SubscriptionPage />
+              </ProtectedRoute>
+            }
+          />
 
         </Routes>
       </BrowserRouter>

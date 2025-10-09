@@ -1,7 +1,12 @@
 # payment/serializers.py
 
 from rest_framework import serializers
-from .models import Payment
+from .models import (
+    Payment,
+    SubscriptionPlan,
+    UserSubscription,
+)
+from .subscription_service import subscription_balance
 from django.contrib.auth import get_user_model
 
 
@@ -35,3 +40,61 @@ class PaymentCreationResponseSerializer(serializers.Serializer):
     payment_id = serializers.UUIDField(help_text="The ID of the payment record.")
     payment_intent = serializers.CharField(help_text="Stripe PaymentIntent ID.")
     status = serializers.CharField(help_text="Current status of the payment.")
+
+
+class SubscriptionPlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SubscriptionPlan
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "price",
+            "currency",
+            "billing_interval",
+            "monthly_allowance",
+            "unlimited_tests",
+        ]
+
+
+class SubscriptionCreateSerializer(serializers.Serializer):
+    plan_id = serializers.UUIDField()
+    payment_method_id = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_plan_id(self, value):
+        try:
+            plan = SubscriptionPlan.objects.get(id=value, is_active=True)
+        except SubscriptionPlan.DoesNotExist as exc:
+            raise serializers.ValidationError("Invalid or inactive subscription plan.") from exc
+        return plan
+
+    def create(self, validated_data):
+        raise NotImplementedError("Use the payment view to create subscriptions.")
+
+
+class UserSubscriptionSerializer(serializers.ModelSerializer):
+    plan = SubscriptionPlanSerializer(read_only=True)
+    remaining_tests = serializers.SerializerMethodField()
+    is_unlimited = serializers.SerializerMethodField()
+
+    class Meta:
+        model = UserSubscription
+        fields = [
+            "id",
+            "plan",
+            "status",
+            "current_period_start",
+            "current_period_end",
+            "cancel_at_period_end",
+            "remaining_tests",
+            "is_unlimited",
+        ]
+
+    def get_remaining_tests(self, obj):
+        balance = subscription_balance(obj)
+        return balance.remaining_tests
+
+    def get_is_unlimited(self, obj):
+        balance = subscription_balance(obj)
+        return balance.is_unlimited

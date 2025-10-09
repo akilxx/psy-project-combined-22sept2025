@@ -5,16 +5,26 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
 from rest_framework import status, generics
-
-from .models import StripeEvent
-from .serializers import (
-    PaymentSerializer, PaymentCreationResponseSerializer
-)
-from rest_framework.response import Response
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from django.contrib.auth import get_user_model
 from testing.models import TestResult, PsychometricTest
-from .models import Payment
+
+from .models import Payment, StripeEvent, SubscriptionPlan, UserSubscription
+from .serializers import (
+    PaymentSerializer,
+    PaymentCreationResponseSerializer,
+    SubscriptionCreateSerializer,
+    SubscriptionPlanSerializer,
+    UserSubscriptionSerializer,
+)
+from .subscription_service import (
+    create_subscription,
+    handle_subscription_webhook_event,
+)
 from .utils import (
     handle_payment_intent_event,
     handle_refund_event,
@@ -112,6 +122,11 @@ class StripeWebhookView(View):
                     else:
                         return JsonResponse(result, status=200)
 
+            elif event_type.startswith('invoice.') or event_type.startswith('customer.subscription'):
+                result = handle_subscription_webhook_event(event_type=event_type, data=obj)
+                if 'error' in result:
+                    logger.warning("Subscription webhook handler reported error: %s", result['error'])
+                    return JsonResponse(result, status=400)
             else:
                 logger.info(f"Unhandled event type: {event_type}")
 
@@ -168,3 +183,68 @@ class CreatePaymentView(generics.CreateAPIView):
         except Exception as e:
             logger.error(f"Unexpected error in create payment: {e}")
             return Response({'error': f"Unexpected error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SubscriptionPlanListView(generics.ListAPIView):
+    queryset = SubscriptionPlan.objects.filter(is_active=True)
+    serializer_class = SubscriptionPlanSerializer
+    permission_classes = [IsAuthenticated]
+
+
+class SubscriptionCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=SubscriptionCreateSerializer,
+        responses={201: UserSubscriptionSerializer},
+        description="Create a subscription for the authenticated user."
+    )
+    def post(self, request, *args, **kwargs):
+        serializer = SubscriptionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plan: SubscriptionPlan = serializer.validated_data['plan_id']
+        payment_method_id = serializer.validated_data.get('payment_method_id') or None
+
+        active_subscription = UserSubscription.objects.filter(
+            user=request.user,
+            is_active=True,
+            status__in=[
+                UserSubscription.STATUS_ACTIVE,
+                UserSubscription.STATUS_TRIALING,
+                UserSubscription.STATUS_INCOMPLETE,
+                UserSubscription.STATUS_PAST_DUE,
+            ],
+        ).first()
+
+        if active_subscription:
+            raise ValidationError('You already have an active subscription.')
+
+        try:
+            subscription = create_subscription(
+                user=request.user,
+                plan=plan,
+                payment_method_id=payment_method_id,
+            )
+        except stripe.error.StripeError as exc:
+            logger.error("Stripe error while creating subscription: %s", exc)
+            raise ValidationError({'stripe': str(exc)})
+        except ValueError as exc:
+            raise ValidationError(str(exc))
+
+        response_serializer = UserSubscriptionSerializer(subscription)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class CurrentSubscriptionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: UserSubscriptionSerializer},
+        description="Retrieve the authenticated user's current subscription."
+    )
+    def get(self, request, *args, **kwargs):
+        subscription = UserSubscription.objects.filter(user=request.user, is_active=True).order_by('-created_at').first()
+        if not subscription:
+            raise NotFound('You do not have an active subscription.')
+        serializer = UserSubscriptionSerializer(subscription)
+        return Response(serializer.data)

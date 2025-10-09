@@ -13,8 +13,9 @@ import concurrent.futures
 from unittest.mock import patch
 import json
 import jsonref
-from .models import Payment, StripeEvent
+from .models import Payment, StripeEvent, SubscriptionPlan, UserSubscription
 from testing.models import PsychometricTest, TestResult
+from .subscription_service import consume_allowance, subscription_balance
 from .utils import handle_integrity_conflict
 from drf_spectacular.generators import SchemaGenerator
 from jsonschema import validate as jsonschema_validate, ValidationError as JSONSchemaValidationError
@@ -934,3 +935,82 @@ class PaymentEndpointSchemaTests(SchemaValidationTests):
         schema = self.get_response_schema(endpoint_path, 'post', '201')
         # Validate the response against the schema
         self.validate_response(response, schema)
+
+class SubscriptionWorkflowTests(APITestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email='subscriber@example.com')
+        self.client.force_authenticate(user=self.user)
+        self.plan = SubscriptionPlan.objects.create(
+            name='Starter',
+            slug='starter',
+            description='Monthly starter plan',
+            price='49.99',
+            currency='usd',
+            monthly_allowance=10,
+            unlimited_tests=False,
+            stripe_product_id='prod_123',
+            stripe_price_id='price_123',
+        )
+        self.list_url = reverse('payment:subscription-plans')
+        self.create_url = reverse('payment:subscription-create')
+        self.me_url = reverse('payment:subscription-current')
+
+    def test_list_subscription_plans(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]['slug'], 'starter')
+
+    @patch('payment.subscription_service.stripe.Customer.modify')
+    @patch('payment.subscription_service.stripe.PaymentMethod.attach')
+    @patch('payment.subscription_service.stripe.Subscription.create')
+    @patch('payment.subscription_service.stripe.Customer.create')
+    def test_create_subscription_creates_ledger(self, mock_customer_create, mock_subscription_create, mock_attach, mock_customer_modify):
+        mock_customer_create.return_value = {'id': 'cus_123'}
+        mock_subscription_create.return_value = {
+            'id': 'sub_123',
+            'status': 'active',
+            'current_period_start': 1696118400,
+            'current_period_end': 1698710400,
+            'cancel_at_period_end': False,
+        }
+
+        payload = {
+            'plan_id': str(self.plan.id),
+            'payment_method_id': 'pm_123',
+        }
+
+        with patch('payment.subscription_service._set_stripe_api_key'):
+            response = self.client.post(self.create_url, payload, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        subscription = UserSubscription.objects.get(user=self.user)
+        self.assertEqual(subscription.plan, self.plan)
+        self.assertEqual(subscription.ledger_entries.count(), 1)
+        self.assertEqual(subscription.remaining_tests, self.plan.monthly_allowance)
+
+    def test_current_subscription_endpoint(self):
+        subscription = UserSubscription.objects.create(
+            user=self.user,
+            plan=self.plan,
+            status=UserSubscription.STATUS_ACTIVE,
+            is_active=True,
+        )
+        subscription.record_accrual(self.plan.monthly_allowance)
+
+        response = self.client.get(self.me_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['remaining_tests'], self.plan.monthly_allowance)
+
+    def test_consume_allowance_reduces_balance(self):
+        subscription = UserSubscription.objects.create(
+            user=self.user,
+            plan=self.plan,
+            status=UserSubscription.STATUS_ACTIVE,
+            is_active=True,
+        )
+        subscription.record_accrual(self.plan.monthly_allowance)
+        consume_allowance(subscription=subscription, quantity=2)
+        balance = subscription_balance(subscription)
+        self.assertEqual(balance.remaining_tests, self.plan.monthly_allowance - 2)
+

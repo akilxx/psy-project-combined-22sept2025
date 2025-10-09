@@ -1,7 +1,7 @@
 # payment/admin.py
 from django.contrib import admin
 from django.contrib import messages
-from .models import Payment
+from .models import Payment, SubscriptionPlan, TestAllowanceLedger, UserSubscription
 import stripe
 from .forms import PaymentReadOnlyForm
 from .utils import send_webhook_notification_email
@@ -253,6 +253,49 @@ class PaymentAdmin(admin.ModelAdmin):
 
     initiate_refund.short_description = 'Initiate Refund for Selected Payments'
 
+
+@admin.register(SubscriptionPlan)
+class SubscriptionPlanAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'slug',
+        'price',
+        'currency',
+        'monthly_allowance',
+        'unlimited_tests',
+        'is_active',
+    )
+    search_fields = ('name', 'slug', 'stripe_price_id', 'stripe_product_id')
+    list_filter = ('is_active', 'unlimited_tests')
+    prepopulated_fields = {"slug": ("name",)}
+
+
+@admin.register(UserSubscription)
+class UserSubscriptionAdmin(admin.ModelAdmin):
+    list_display = (
+        'user',
+        'plan',
+        'status',
+        'current_period_start',
+        'current_period_end',
+        'is_active',
+    )
+    search_fields = ('user__email', 'stripe_subscription_id', 'stripe_customer_id')
+    list_filter = ('status', 'is_active', 'plan')
+
+
+@admin.register(TestAllowanceLedger)
+class TestAllowanceLedgerAdmin(admin.ModelAdmin):
+    list_display = (
+        'subscription',
+        'entry_type',
+        'quantity',
+        'test',
+        'effective_date',
+        'created_at',
+    )
+    list_filter = ('entry_type', 'created_at')
+    search_fields = ('subscription__user__email',)
 
 
 def append_refund_error( payment, error_type, error_message):

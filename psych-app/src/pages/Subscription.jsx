@@ -1,5 +1,5 @@
 // psych-app/src/pages/Subscription.jsx
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
@@ -12,6 +12,7 @@ import {
   fetchPlans,
   createSubscription,
   fetchCurrentSubscription,
+  cancelSubscription,
 } from '../api/subscriptions';
 
 const stripePromise = loadStripe(
@@ -73,7 +74,7 @@ function formatDate(value) {
   });
 }
 
-function CurrentSubscription({ subscription }) {
+function CurrentSubscription({ subscription, onCancel, cancelling }) {
   if (!subscription) {
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 p-6 bg-slate-50">
@@ -87,6 +88,9 @@ function CurrentSubscription({ subscription }) {
   }
 
   const { plan } = subscription;
+  const canScheduleCancellation =
+    subscription.status !== 'canceled' && !subscription.cancel_at_period_end;
+  const canCancelImmediately = subscription.status !== 'canceled';
 
   return (
     <div className="rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm">
@@ -148,6 +152,44 @@ function CurrentSubscription({ subscription }) {
           </dd>
         </div>
       </dl>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        {canScheduleCancellation && (
+          <button
+            type="button"
+            onClick={() => onCancel?.({ cancelAtPeriodEnd: true })}
+            disabled={cancelling}
+            className="inline-flex items-center justify-center rounded-xl border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:border-indigo-300 hover:text-indigo-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+          >
+            {cancelling ? 'Scheduling cancellation…' : 'Cancel at period end'}
+          </button>
+        )}
+
+        {canCancelImmediately && (
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  'Are you sure you want to cancel immediately? You will lose access right away.'
+                )
+              ) {
+                onCancel?.({ cancelAtPeriodEnd: false });
+              }
+            }}
+            disabled={cancelling}
+            className="inline-flex items-center justify-center rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 transition hover:border-red-300 hover:text-red-800 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400"
+          >
+            {cancelling ? 'Cancelling…' : 'Cancel immediately'}
+          </button>
+        )}
+
+        {!canScheduleCancellation && !canCancelImmediately && (
+          <span className="text-sm text-slate-500">
+            This subscription is no longer active.
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -322,6 +364,9 @@ function SubscriptionContent() {
   const [subscription, setSubscription] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [subscriptionError, setSubscriptionError] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState(null);
+  const [cancelSuccess, setCancelSuccess] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -354,12 +399,16 @@ function SubscriptionContent() {
         if (!cancelled) {
           setSubscription(data);
           setSubscriptionError(null);
+          setCancelError(null);
+          setCancelSuccess(null);
         }
       } catch (err) {
         if (!cancelled) {
           if (err.response?.status === 404) {
             setSubscription(null);
             setSubscriptionError(null);
+            setCancelError(null);
+            setCancelSuccess(null);
           } else {
             const message =
               err.response?.data?.detail ||
@@ -377,6 +426,45 @@ function SubscriptionContent() {
       cancelled = true;
     };
   }, []);
+
+  const handleCancelSubscription = useCallback(
+    async ({ cancelAtPeriodEnd }) => {
+      if (!subscription) return;
+
+      setCancelError(null);
+      setCancelSuccess(null);
+      setCancelling(true);
+
+      try {
+        const { data } = await cancelSubscription({
+          cancel_at_period_end: cancelAtPeriodEnd,
+        });
+
+        if (!cancelAtPeriodEnd && data.status === 'canceled') {
+          setSubscription(null);
+        } else {
+          setSubscription(data);
+        }
+
+        setCancelSuccess(
+          cancelAtPeriodEnd
+            ? 'Your subscription will be cancelled at the end of the current billing period.'
+            : 'Your subscription has been cancelled immediately.'
+        );
+      } catch (err) {
+        const message =
+          err.response?.data?.error ||
+          err.response?.data?.detail ||
+          err.response?.data?.stripe ||
+          err.message ||
+          'Unable to cancel your subscription.';
+        setCancelError(message);
+      } finally {
+        setCancelling(false);
+      }
+    },
+    [subscription]
+  );
 
   const hasActiveSubscription = useMemo(
     () => Boolean(subscription && subscription.status !== 'canceled'),
@@ -400,19 +488,35 @@ function SubscriptionContent() {
         </div>
       )}
 
+      {cancelSuccess && (
+        <div className="mb-4 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+          {cancelSuccess}
+        </div>
+      )}
+
+      {cancelError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {cancelError}
+        </div>
+      )}
+
       {subscriptionLoading ? (
         <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-500">
           Loading your subscription…
         </div>
       ) : (
-        <CurrentSubscription subscription={subscription} />
+        <CurrentSubscription
+          subscription={subscription}
+          onCancel={handleCancelSubscription}
+          cancelling={cancelling}
+        />
       )}
 
       <div className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
         <h2 className="text-xl font-semibold text-slate-900">Choose your plan</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Subscriptions renew automatically. You can cancel anytime from your
-          billing portal.
+          Subscriptions renew automatically. You can cancel anytime from this
+          page if your needs change.
         </p>
 
         {plansLoading ? (
@@ -420,19 +524,23 @@ function SubscriptionContent() {
         ) : plansError ? (
           <p className="mt-6 text-sm text-red-600">{plansError}</p>
         ) : (
-          <SubscriptionForm
-            plans={plans}
-            disabled={hasActiveSubscription}
-            onSubscribed={setSubscription}
-          />
-        )}
+        <SubscriptionForm
+          plans={plans}
+          disabled={hasActiveSubscription}
+          onSubscribed={data => {
+            setSubscription(data);
+            setCancelError(null);
+            setCancelSuccess(null);
+          }}
+        />
+      )}
 
-        {hasActiveSubscription && (
-          <p className="mt-4 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-700">
-            You already have an active subscription. Contact support to update
-            or cancel your plan.
-          </p>
-        )}
+      {hasActiveSubscription && (
+        <p className="mt-4 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-700">
+          You already have an active subscription. Use the options above to
+          manage or cancel your plan at any time.
+        </p>
+      )}
       </div>
     </div>
   );

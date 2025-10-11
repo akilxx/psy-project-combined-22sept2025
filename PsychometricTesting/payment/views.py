@@ -18,11 +18,13 @@ from .serializers import (
     PaymentSerializer,
     PaymentCreationResponseSerializer,
     SubscriptionCreateSerializer,
+    SubscriptionCancelSerializer,
     SubscriptionPlanSerializer,
     UserSubscriptionSerializer,
 )
 from .subscription_service import (
     create_subscription,
+    cancel_subscription,
     handle_subscription_webhook_event,
 )
 from .utils import (
@@ -248,3 +250,39 @@ class CurrentSubscriptionView(APIView):
             raise NotFound('You do not have an active subscription.')
         serializer = UserSubscriptionSerializer(subscription)
         return Response(serializer.data)
+
+
+class SubscriptionCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=SubscriptionCancelSerializer,
+        responses={200: UserSubscriptionSerializer},
+        description="Cancel the authenticated user's active subscription.",
+    )
+    def post(self, request, *args, **kwargs):
+        subscription = UserSubscription.objects.filter(
+            user=request.user,
+            is_active=True,
+        ).order_by('-created_at').first()
+
+        if not subscription:
+            raise NotFound('You do not have an active subscription to cancel.')
+
+        serializer = SubscriptionCancelSerializer(data=request.data or {})
+        serializer.is_valid(raise_exception=True)
+        cancel_at_period_end = serializer.validated_data.get('cancel_at_period_end', True)
+
+        try:
+            updated_subscription = cancel_subscription(
+                subscription=subscription,
+                cancel_at_period_end=cancel_at_period_end,
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc))
+        except stripe.error.StripeError as exc:
+            logger.error("Stripe error while cancelling subscription: %s", exc)
+            raise ValidationError({'stripe': str(exc)})
+
+        response_serializer = UserSubscriptionSerializer(updated_subscription)
+        return Response(response_serializer.data)

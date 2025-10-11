@@ -101,6 +101,85 @@ def create_subscription(
     return user_subscription
 
 
+def cancel_subscription(
+    *,
+    subscription: UserSubscription,
+    cancel_at_period_end: bool = True,
+) -> UserSubscription:
+    """Cancel a subscription either immediately or at period end."""
+
+    if subscription.status == UserSubscription.STATUS_CANCELED or not subscription.is_active:
+        raise ValueError("This subscription has already been canceled.")
+
+    if cancel_at_period_end and subscription.cancel_at_period_end:
+        raise ValueError("Cancellation is already scheduled for this subscription.")
+
+    if not subscription.stripe_subscription_id:
+        raise ValueError("Subscription is missing a Stripe identifier and cannot be canceled.")
+
+    _set_stripe_api_key()
+
+    try:
+        if cancel_at_period_end:
+            stripe_subscription = stripe.Subscription.modify(
+                subscription.stripe_subscription_id,
+                cancel_at_period_end=True,
+            )
+            subscription.cancel_at_period_end = True
+            subscription.status = stripe_subscription.get("status", subscription.status)
+            subscription.current_period_start = _parse_timestamp(
+                stripe_subscription.get("current_period_start")
+            )
+            subscription.current_period_end = _parse_timestamp(
+                stripe_subscription.get("current_period_end")
+            )
+            subscription.save(
+                update_fields=[
+                    "status",
+                    "cancel_at_period_end",
+                    "current_period_start",
+                    "current_period_end",
+                    "updated_at",
+                ]
+            )
+        else:
+            stripe_subscription = stripe.Subscription.delete(
+                subscription.stripe_subscription_id
+            )
+            subscription.status = stripe_subscription.get(
+                "status", UserSubscription.STATUS_CANCELED
+            )
+            subscription.cancel_at_period_end = False
+            subscription.is_active = False
+            subscription.current_period_start = _parse_timestamp(
+                stripe_subscription.get("current_period_start")
+            ) or subscription.current_period_start
+            subscription.current_period_end = _parse_timestamp(
+                stripe_subscription.get("current_period_end")
+            ) or subscription.current_period_end
+            subscription.ended_at = timezone.now()
+            subscription.save(
+                update_fields=[
+                    "status",
+                    "cancel_at_period_end",
+                    "is_active",
+                    "current_period_start",
+                    "current_period_end",
+                    "ended_at",
+                    "updated_at",
+                ]
+            )
+    except stripe.error.StripeError as exc:  # type: ignore[attr-defined]
+        logger.error(
+            "Stripe error while cancelling subscription %s: %s",
+            subscription.id,
+            exc,
+        )
+        raise
+
+    return subscription
+
+
 def record_monthly_accruals(reference_time: Optional[datetime] = None) -> int:
     """Accrue monthly allowances for all active subscriptions whose period has ended."""
     reference_time = reference_time or timezone.now()

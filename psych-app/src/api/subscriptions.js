@@ -9,3 +9,6 @@ export const createSubscription = payload =>
 
 export const fetchCurrentSubscription = () =>
   api.get('/payment/subscriptions/me/');
+
+export const cancelSubscription = payload =>
+  api.post('/payment/subscriptions/me/cancel/', payload);

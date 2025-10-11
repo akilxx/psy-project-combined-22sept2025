@@ -73,6 +73,13 @@ class SubscriptionCreateSerializer(serializers.Serializer):
         raise NotImplementedError("Use the payment view to create subscriptions.")
 
 
+class SubscriptionCancelSerializer(serializers.Serializer):
+    cancel_at_period_end = serializers.BooleanField(
+        default=True,
+        help_text="When true, the subscription remains active until the current period ends.",
+    )
+
+
 class UserSubscriptionSerializer(serializers.ModelSerializer):
     plan = SubscriptionPlanSerializer(read_only=True)
     remaining_tests = serializers.SerializerMethodField()

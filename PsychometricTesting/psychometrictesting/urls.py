@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
-from authentication.views import RegistrationView, VerifyRegistrationView, RequestOTPView, VerifyOTPView, LogoutView
+from authentication.views import OTPView, LogoutView
 from rest_framework_simplejwt.views import TokenRefreshView
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -17,10 +17,7 @@ urlpatterns = [
     path('testing/', include(('testing.urls', 'testing'), namespace='testing')),
     path('payment/', include(('payment.urls', 'payment'), namespace='payment')),
     path('admin/', admin.site.urls),
-    path('register/', RegistrationView.as_view(), name='register'),
-    path('verify-registration/', VerifyRegistrationView.as_view(), name='verify-registration'),
-    path('request-otp/', RequestOTPView.as_view(), name='request-otp'),
-    path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('otp/', OTPView.as_view(), name='otp'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', LogoutView.as_view(), name='auth_logout'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

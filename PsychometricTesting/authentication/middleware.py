@@ -2,8 +2,9 @@
 
 
 from django.utils import timezone
+
 from .models import PendingRegistration
-from .serializers import VerifyRegistrationSerializer, VerifyOTPSerializer
+from .serializers import OTPFlowSerializer
 
 
 
@@ -13,7 +14,7 @@ class PendingRegistrationCleanupMiddleware:
 
     def __call__(self, request):
         # Run cleanup on relevant URLs
-        if request.path in ['/register/', '/verify-registration/', '/verify-otp/']:
+        if request.path == '/otp/':
             # Invalidate expired pending registrations
             PendingRegistration.objects.filter(
                 expires_at__lt=timezone.now(),
@@ -21,12 +22,8 @@ class PendingRegistrationCleanupMiddleware:
             ).update(is_valid=False)
 
             # Invalidate pending registrations with maximum failed attempts
-            max_attempts = max(
-                VerifyRegistrationSerializer.MAX_FAILED_ATTEMPTS,
-                VerifyOTPSerializer.MAX_FAILED_ATTEMPTS
-            )
             PendingRegistration.objects.filter(
-                failed_attempts__gte=max_attempts,
+                failed_attempts__gte=OTPFlowSerializer.MAX_FAILED_ATTEMPTS,
                 is_valid=True
             ).update(is_valid=False)
 

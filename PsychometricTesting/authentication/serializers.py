@@ -1,257 +1,157 @@
-
 # authentication/serializers.py
 
-
 from rest_framework import serializers
-from .models import PendingRegistration
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 import random
+
+from .models import PendingRegistration
 
 
 User = get_user_model()
 
 
-#---------------------------------------------OTP Verification System----------------------------------------------------------------
+class OTPFlowSerializer(serializers.Serializer):
+    """Serializer that powers the combined login/registration OTP flow."""
 
-class RegistrationSerializer(serializers.ModelSerializer):
-    """
-        Serializer for user registration, handles the creation of a pending registration with an OTP.
-    """
-
-    email = serializers.EmailField(
-        help_text='The email address of the user registering.'
+    email = serializers.EmailField(help_text="The email address for login or registration.")
+    otp_code = serializers.CharField(
+        max_length=4,
+        required=False,
+        help_text="The 4-digit OTP code sent to the user's email.",
     )
-    class Meta:
-        model = PendingRegistration
-        fields = ('email',)
+
+    MAX_FAILED_ATTEMPTS = 3
+    RESEND_COOLDOWN_SECONDS = 30
+
+    def validate_email(self, value):
+        return User.objects.normalize_email(value)
+
+    def validate_otp_code(self, value):
+        if value and (not value.isdigit() or len(value) != 4):
+            raise serializers.ValidationError("OTP codes must be 4 digits.")
+        return value
 
     def validate(self, data):
-        email = data.get('email')
-
-        # Check if email is already registered
-        if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError({'email': 'Email is already registered.'})
-
-        # Check if a valid pending registration exists
-        if PendingRegistration.objects.filter(email=email, is_valid=True).exists():
-            raise serializers.ValidationError({'email': 'An OTP has already been sent to this email. Please check your inbox.'})
-
-        return data
-
-    def create(self, validated_data):
-        email = validated_data.get('email')
-
-        # Invalidate all existing pending registrations for this email
-        PendingRegistration.objects.filter(email=email).update(is_valid=False)
-
-        # Generate a 6-digit OTP
-        otp_code = str(random.randint(100000, 999999))
-        # Set expiration time to 10 minutes from now
-        expires_at = timezone.now() + timezone.timedelta(minutes=10)
-        pending_registration = PendingRegistration.objects.create(
-            email=email,
-            otp_code=otp_code,
-            expires_at=expires_at,
-            failed_attempts=0,
-            is_valid=True
-        )
-        return pending_registration
-
-class VerifyRegistrationSerializer(serializers.Serializer):
-    """
-        Serializer for verifying the OTP code during user registration.
-    """
-
-    registration_id = serializers.UUIDField(help_text='The unique identifier of the pending registration.')
-    otp_code = serializers.CharField(max_length=6, help_text="The 6-digit OTP code sent to the user's email.")
-    MAX_FAILED_ATTEMPTS = 3  # Maximum allowed attempts
-
-    def validate(self, data):
-        registration_id = data.get('registration_id')
+        email = data['email']
         otp_code = data.get('otp_code')
+        now = timezone.now()
 
-        try:
-            pending_registration = PendingRegistration.objects.get(registration_id=registration_id)
-        except PendingRegistration.DoesNotExist:
-            raise serializers.ValidationError({'registration_id': 'Invalid or expired registration ID.'})
+        user = User.objects.filter(email=email).first()
+        data['user'] = user
 
-        # Check if the pending registration has expired
-        if pending_registration.expires_at < timezone.now():
-            # Invalidate the pending registration
-            pending_registration.is_valid = False
-            pending_registration.save()
-            raise serializers.ValidationError({'registration_id': 'This registration has expired. Please register again.'})
+        if otp_code:
+            data['operation'] = 'verify'
+            pending = PendingRegistration.objects.filter(
+                email=email,
+                is_valid=True,
+            ).order_by('-created_at').first()
 
-        # Check if maximum failed attempts have been reached
-        if pending_registration.failed_attempts >= self.MAX_FAILED_ATTEMPTS:
-            # Invalidate the pending registration
-            pending_registration.is_valid = False
-            pending_registration.save()
-            raise serializers.ValidationError({'otp_code': 'Maximum verification attempts exceeded. Please register again.'})
+            if not pending:
+                raise serializers.ValidationError({
+                    'otp_code': 'No active OTP found for this email. Please request a new code.'
+                })
 
-        # Check if the pending registration is still valid
-        if not pending_registration.is_valid:
-            raise serializers.ValidationError({'registration_id': 'This registration has expired. Please register again.'})
+            if pending.expires_at < now:
+                pending.is_valid = False
+                pending.save(update_fields=['is_valid'])
+                raise serializers.ValidationError({
+                    'otp_code': 'This OTP has expired. Please request a new code.'
+                })
 
-        # Check if OTP matches
-        if pending_registration.otp_code != otp_code:
-            # Increment failed attempts
-            pending_registration.failed_attempts += 1
-            pending_registration.save()
-            attempts_left = self.MAX_FAILED_ATTEMPTS - pending_registration.failed_attempts
-            if attempts_left <= 0:
-                # Invalidate the pending registration
-                pending_registration.is_valid = False
-                pending_registration.save()
-                raise serializers.ValidationError({'otp_code': 'Maximum verification attempts exceeded. Please register again.'})
-            else:
-                raise serializers.ValidationError({'otp_code': f'Invalid OTP code. You have {attempts_left} attempts left.'})
+            if pending.failed_attempts >= self.MAX_FAILED_ATTEMPTS:
+                pending.is_valid = False
+                pending.save(update_fields=['is_valid'])
+                raise serializers.ValidationError({
+                    'otp_code': 'Maximum verification attempts exceeded. Please request a new OTP.'
+                })
 
-        data['pending_registration'] = pending_registration
-        return data
+            if pending.otp_code != otp_code:
+                pending.failed_attempts += 1
+                update_fields = ['failed_attempts']
+                if pending.failed_attempts >= self.MAX_FAILED_ATTEMPTS:
+                    pending.is_valid = False
+                    update_fields.append('is_valid')
+                    message = 'Maximum verification attempts exceeded. Please request a new OTP.'
+                else:
+                    attempts_left = self.MAX_FAILED_ATTEMPTS - pending.failed_attempts
+                    message = f'Invalid OTP code. You have {attempts_left} attempts left.'
 
-class RequestOTPSerializer(serializers.Serializer):
-    """
-        Serializer for requesting an OTP code for login.
-    """
-    email = serializers.EmailField(help_text='The email address of the user requesting an OTP.')
+                pending.save(update_fields=update_fields)
+                raise serializers.ValidationError({'otp_code': message})
 
-    def validate(self, data):
-        email = data.get('email')
+            data['intent'] = pending.intent
+            data['pending_registration'] = pending
+            return data
 
-        if not User.objects.filter(email=email).exists():
-            raise serializers.ValidationError({'non_field_errors': ['User not found.']})
+        data['operation'] = 'request'
+        intent = PendingRegistration.Intent.LOGIN if user else PendingRegistration.Intent.REGISTER
+        data['intent'] = intent
 
-        # Check for existing valid pending registrations
-        existing_pending = PendingRegistration.objects.filter(
+        recent_valid = PendingRegistration.objects.filter(
             email=email,
             is_valid=True,
-            expires_at__gt=timezone.now()
-        ).first()
+        ).order_by('-created_at').first()
 
-        if existing_pending:
-            raise serializers.ValidationError({
-                'detail': 'An OTP has already been sent and is still valid. Please check your email or request a new OTP after it expires.'
-            })
+        if recent_valid:
+            elapsed = (now - recent_valid.created_at).total_seconds()
+            if elapsed < self.RESEND_COOLDOWN_SECONDS:
+                wait_seconds = max(1, int(self.RESEND_COOLDOWN_SECONDS - elapsed))
+                raise serializers.ValidationError({
+                    'detail': f'Please wait {wait_seconds} seconds before requesting a new OTP.',
+                    'retry_after': wait_seconds,
+                })
 
         return data
 
     def create(self, validated_data):
-        email = validated_data.get('email')
+        email = validated_data['email']
+        intent = validated_data['intent']
+        now = timezone.now()
 
-        # Invalidate all existing pending registrations for this email
-        PendingRegistration.objects.filter(email=email).update(is_valid=False)
+        PendingRegistration.objects.filter(email=email, is_valid=True).update(is_valid=False)
 
-        # Generate a 6-digit OTP
-        otp_code = str(random.randint(100000, 999999))
-        # Set expiration time to 10 minutes from now
-        expires_at = timezone.now() + timezone.timedelta(minutes=10)
-        pending_registration = PendingRegistration.objects.create(
+        otp_code = f"{random.randint(0, 9999):04d}"
+        expires_at = now + timezone.timedelta(minutes=10)
+
+        pending = PendingRegistration.objects.create(
             email=email,
             otp_code=otp_code,
             expires_at=expires_at,
             failed_attempts=0,
-            is_valid=True
+            is_valid=True,
+            intent=intent,
         )
-        return validated_data
 
-class VerifyOTPSerializer(serializers.Serializer):
-    """
-        Serializer for verifying the OTP code during user login.
-    """
-    email = serializers.EmailField(help_text='The email address of the user logging in.')
-    otp_code = serializers.CharField(max_length=6, help_text="The 6-digit OTP code sent to the user's email.")
-    MAX_FAILED_ATTEMPTS = 3  # Maximum allowed attempts
-
-    def validate(self, data):
-        email = data.get('email')
-        otp_code = data.get('otp_code')
-
-        # Retrieve all pending registrations for the email, ordered by newest first
-        pending_registrations = PendingRegistration.objects.filter(email=email).order_by('-created_at')
-
-        if not pending_registrations.exists():
-            raise serializers.ValidationError({'email': 'No pending OTP found for this email. Please request a new OTP.'})
-
-        # Get the most recent pending registration
-        pending_registration = pending_registrations.first()
-
-        # Check if the pending OTP has expired
-        if pending_registration.expires_at < timezone.now():
-            # Invalidate the pending registration
-            pending_registration.is_valid = False
-            pending_registration.save()
-            raise serializers.ValidationError({'otp_code': 'This OTP has expired. Please request a new OTP.'})
-
-        # Check if maximum failed attempts have been reached
-        if pending_registration.failed_attempts >= self.MAX_FAILED_ATTEMPTS:
-            # Invalidate the pending registration
-            pending_registration.is_valid = False
-            pending_registration.save()
-            raise serializers.ValidationError(
-                {'otp_code': 'Maximum verification attempts exceeded. Please request a new OTP.'})
-
-        # Check if the pending registration is still valid
-        if not pending_registration.is_valid:
-            raise serializers.ValidationError({'otp_code': 'This OTP is no longer valid. Please request a new OTP.'})
-
-        # Check if OTP matches
-        if pending_registration.otp_code != otp_code:
-            # Increment failed attempts
-            pending_registration.failed_attempts += 1
-            pending_registration.save()
-            attempts_left = self.MAX_FAILED_ATTEMPTS - pending_registration.failed_attempts
-            if attempts_left <= 0:
-                # Invalidate the pending registration
-                pending_registration.is_valid = False
-                pending_registration.save()
-                raise serializers.ValidationError({'otp_code': 'Maximum verification attempts exceeded. Please request a new OTP.'})
-            else:
-                raise serializers.ValidationError({'otp_code': f'Invalid OTP code. You have {attempts_left} attempts left.'})
-
-        data['user'] = User.objects.get(email=email)
-        data['pending_registration'] = pending_registration  # Include pending_registration for view
-        return data
+        return pending
 
 
-class RegistrationResponseSerializer(serializers.Serializer):
-    """
-        Serializer for the response returned after a successful registration request.
-    """
-    detail = serializers.CharField(help_text="A message indicating that the OTP was sent to the user's email.")
-    registration_id = serializers.UUIDField(help_text="The unique identifier for the pending registration.")
+class OTPInitiateResponseSerializer(serializers.Serializer):
+    """Schema for responses after requesting/resending an OTP."""
 
-class VerifyRegistrationResponseSerializer(serializers.Serializer):
-    """
-        Serializer for the response returned after successful OTP verification during registration.
-    """
-    detail = serializers.CharField(help_text="A message indicating that the registration was successful.")
-    refresh = serializers.CharField(help_text="The refresh token issued upon successful registration.")
-    access = serializers.CharField(help_text="The access token issued upon successful registration.")
+    detail = serializers.CharField(help_text="A message indicating the OTP was sent.")
+    status = serializers.CharField(help_text="Identifies whether the flow is for login or registration.")
+    resend_available_in = serializers.IntegerField(
+        help_text="Seconds until another OTP can be requested."
+    )
 
-class OTPResponseSerializer(serializers.Serializer):
-    """
-       Serializer for the response returned after requesting an OTP for login.
-    """
-    detail = serializers.CharField(help_text="A message indicating that the OTP was sent to the user's email.")
 
-class VerifyOTPResponseSerializer(serializers.Serializer):
-    """
-        Serializer for the response returned after successful OTP verification during login.
-    """
-    detail = serializers.CharField(help_text="A message indicating that the login was successful.")
-    refresh = serializers.CharField(help_text="The refresh token issued upon successful login.")
-    access = serializers.CharField(help_text="The access token issued upon successful login.")
+class OTPVerifyResponseSerializer(serializers.Serializer):
+    """Schema for responses after successfully verifying an OTP."""
+
+    detail = serializers.CharField(help_text="A message indicating success.")
+    status = serializers.CharField(help_text="Indicates whether the user logged in or registered.")
+    refresh = serializers.CharField(help_text="The refresh token issued upon success.")
+    access = serializers.CharField(help_text="The access token issued upon success.")
+
 
 class LogoutResponseSerializer(serializers.Serializer):
-    """
-        Serializer for the response returned after a successful logout.
-    """
+    """Serializer for the response returned after a successful logout."""
+
     detail = serializers.CharField(help_text="A message indicating that the logout was successful.")
 
+
 class ErrorResponseSerializer(serializers.Serializer):
-    """
-        Serializer for error responses.
-    """
+    """Serializer for error responses."""
+
     detail = serializers.CharField(help_text="A message describing the error.")

@@ -53,13 +53,23 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class PendingRegistration(models.Model):
+    class Intent(models.TextChoices):
+        REGISTER = "register", "Register"
+        LOGIN = "login", "Login"
+
     email = models.EmailField()
     registration_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    otp_code = models.CharField(max_length=6)
+    otp_code = models.CharField(max_length=4)
     expires_at = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
     failed_attempts = models.IntegerField(default=0)
     is_valid = models.BooleanField(default=True)
+    intent = models.CharField(
+        max_length=20,
+        choices=Intent.choices,
+        default=Intent.REGISTER,
+        help_text="Indicates whether the pending OTP is for registration or login.",
+    )
 
     class Meta:
         indexes = [

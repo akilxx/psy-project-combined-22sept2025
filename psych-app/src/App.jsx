@@ -5,9 +5,7 @@ import Navbar from './components/Navbar';
 import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Register from './pages/Register';
-import VerifyRegister from './pages/VerifyRegister';
-import Login from './pages/Login';              
-import VerifyLogin from './pages/VerifyLogin';  
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TestStart from './pages/TestStart';
 import TestRunner from './pages/TestRunner';
@@ -26,9 +24,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/verify-register/:registrationId" element={<VerifyRegister />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/verify-login" element={<VerifyLogin />} />
 
           <Route
             path="/dashboard"

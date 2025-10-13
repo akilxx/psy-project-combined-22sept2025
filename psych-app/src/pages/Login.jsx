@@ -164,7 +164,7 @@ export default function AuthPage() {
             type="text"
             inputMode="numeric"
             maxLength={4}
-            pattern="\\d{4}"
+            pattern="[0-9]{4}"
             className="w-full p-3 border rounded-xl tracking-widest text-center text-black"
             value={otp}
             onChange={(event) => setOtp(event.target.value.replace(/[^0-9]/g, ""))}

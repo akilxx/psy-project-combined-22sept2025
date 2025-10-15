@@ -60,7 +60,8 @@ export default function TestRunner() {
      NOTE: sidePadCls indents content so chevrons (abs-positioned at card edge)
      don't overlap the interactive elements. Adjust values if needed. */
   const contentMaxWCls = 'w-full max-w-5xl mx-auto';
-  const sidePadCls = 'px-14 sm:px-16';
+  const sidePadCls = 'px-5 sm:px-16';
+  const mobileSidePadCls = 'px-5';
 
   /* ---------- completed-test view ---------- */
   if (!inProgress && test) {
@@ -172,16 +173,35 @@ export default function TestRunner() {
 
   /* Reusable chevron button styles */
   const chevronBtnBase =
-    'absolute top-1/2 -translate-y-1/2 p-2 rounded-full text-black ' +
-    'hover:bg-gray-200 disabled:text-gray-400 disabled:opacity-40 ' +
-    'disabled:cursor-not-allowed';
+    'p-2 rounded-full text-black hover:bg-gray-200 disabled:text-gray-400 ' +
+    'disabled:opacity-40 disabled:cursor-not-allowed';
+
+  const renderOptions = () =>
+    test.options.map(opt => {
+      const selected = prevAnswer === opt;
+      return (
+        <RippleButton
+          key={`${q.question_number}-${opt}`}
+          onClick={() => handleAnswer(q.question_number, opt)}
+          className={clsx(
+            ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition border-0',
+
+            selected
+              ? 'bg-black text-white'
+              : 'bg-[#EBEBEB] text-black hover:bg-[black] hover:text-[white] focus:outline-none',
+          )}
+        >
+          <span className="inline-block animate-fadeIn">{opt}</span>
+        </RippleButton>
+      );
+    });
 
   /* ---------- live render ---------- */
   return (
     <div className={wrapperCls}>
       <ModifiedCard className={cardBaseCls}>
         {/* header */}
-        <header className="px-7 pt-6 pb-0">
+        <header className="px-5 sm:px-7 pt-6 pb-0">
           {/* ProgressBar aligned to options grid width */}
           <div className={clsx(contentMaxWCls, sidePadCls)}>
             <ProgressBar
@@ -196,7 +216,7 @@ export default function TestRunner() {
         </header>
 
         {/* body — drives all vertical spacing below ProgressBar */}
-        <section className="px-7 pt-10 pb-0">
+        <section className="px-5 sm:px-7 pt-10 pb-0">
           {/* Item pill */}
           <div className="flex justify-center mb-10">
             <h2 className="text-lg font-bold text-black inline-block bg-[#EBEBEB] px-3 py-1 rounded-[10px]">
@@ -221,18 +241,17 @@ export default function TestRunner() {
           </div>
 
           {/* answer grid + side chevrons (all breakpoints) */}
-          <div className="relative w-full">
-            {/* prev side chevron */}
+          {/* Desktop / tablet layout with side chevrons */}
+          <div className="relative w-full hidden sm:block">
             <button
               onClick={goPrev}
               disabled={!canGoPrev}
-              className={clsx(chevronBtnBase, 'left-0')}
+              className={clsx(chevronBtnBase, 'absolute left-0 top-1/2 -translate-y-1/2')}
               aria-label="Previous answered item"
             >
               <ChevronLeftIcon className="w-10 h-10" strokeWidth={canGoPrev ? 3 : 2} />
             </button>
 
-            {/* options grid (indented to clear chevrons) */}
             <div
               className={clsx(
                 contentMaxWCls,
@@ -240,42 +259,75 @@ export default function TestRunner() {
                 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'
               )}
             >
-              {test.options.map(opt => {
-                const selected = prevAnswer === opt;
-                return (
-                  <RippleButton
-                    key={`${q.question_number}-${opt}`}
-                    onClick={() => handleAnswer(q.question_number, opt)}
-                    className={clsx(
-                      ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition border-0',
-
-                      selected
-                        ? 'bg-black text-white'
-                        : 'bg-[#EBEBEB] text-black hover:bg-[black] hover:text-[white] focus:outline-none',
-                    )}
-                  >
-                    <span className="inline-block animate-fadeIn">{opt}</span>
-                  </RippleButton>
-                );
-              })}
+              {renderOptions()}
             </div>
 
-
-            {/* next side chevron */}
             <button
               onClick={goNext}
               disabled={!canGoNext}
-              className={clsx(chevronBtnBase, 'right-0')}
+              className={clsx(chevronBtnBase, 'absolute right-0 top-1/2 -translate-y-1/2')}
               aria-label="Next answered item"
             >
               <ChevronRightIcon className="w-10 h-10" strokeWidth={canGoNext ? 3 : 2} />
             </button>
           </div>
+
+          {/* Mobile layout without side chevrons */}
+          <div className="w-full sm:hidden">
+            <div
+              className={clsx(
+                contentMaxWCls,
+                mobileSidePadCls,
+                'grid grid-cols-1 gap-3'
+              )}
+            >
+              {renderOptions()}
+            </div>
+          </div>
         </section>
 
         {/* footer — equal gap below answers, aligned to grid */}
-        <footer className="px-7 pb-6 mt-16 sm:mt-20 lg:mt-28">
-          <div className={clsx(contentMaxWCls, sidePadCls, 'flex justify-center')}>
+        <footer className="px-5 sm:px-7 pb-6 mt-16 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0">
+          <div
+            className={clsx(
+              contentMaxWCls,
+              mobileSidePadCls,
+              'flex items-center justify-center gap-6 sm:hidden'
+            )}
+          >
+            <button
+              onClick={goPrev}
+              disabled={!canGoPrev}
+              className={clsx(chevronBtnBase)}
+              aria-label="Previous answered item"
+            >
+              <ChevronLeftIcon className="w-10 h-10" strokeWidth={canGoPrev ? 3 : 2} />
+            </button>
+
+            <RippleButton
+              onClick={handleSubmit}
+              disabled={!allAnswered}
+              className={clsx(
+                'px-8 py-3 leading-[16px] rounded-[10px] font-bold',
+                'bg-[#293ABF] text-[white]',
+                'disabled:bg-[#EBEBEB] disabled:text-gray-400 disabled:cursor-not-allowed',
+                allAnswered && 'hover:bg-[black] hover:text-[white]'
+              )}
+            >
+              Submit
+            </RippleButton>
+
+            <button
+              onClick={goNext}
+              disabled={!canGoNext}
+              className={clsx(chevronBtnBase)}
+              aria-label="Next answered item"
+            >
+              <ChevronRightIcon className="w-10 h-10" strokeWidth={canGoNext ? 3 : 2} />
+            </button>
+          </div>
+
+          <div className={clsx(contentMaxWCls, sidePadCls, 'hidden sm:flex justify-center')}>
             <RippleButton
               onClick={handleSubmit}
               disabled={!allAnswered}

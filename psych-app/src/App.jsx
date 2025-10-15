@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TestStart from './pages/TestStart';
 import TestRunner from './pages/TestRunner';
+import AltTestRunner from './pages/AltTestRunner';
 import Results from './pages/Results';
 import PaymentElementPage from './pages/PaymentElementPage';
 import SubscriptionPage from './pages/Subscription';
@@ -35,7 +36,9 @@ export default function App() {
             }
           />
           <Route path="/test/start/:testId" element={<TestStart />} />
+          <Route path="/test/start/:testId/alt" element={<TestStart useAltRunner />} />
           <Route path="/test/:resultId" element={<TestRunner />} />
+          <Route path="/test/:resultId/alt" element={<AltTestRunner />} />
           <Route path="/results/:resultId" element={<Results />} />
 
 

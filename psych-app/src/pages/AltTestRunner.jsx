@@ -5,7 +5,7 @@ import { fetchResult, submitAnswer, markComplete } from '../api/testing';
 
 function StatPill({ label, value }) {
   return (
-    <div className="flex flex-col items-center px-3 py-2 bg-slate-100 rounded-lg">
+    <div className="flex flex-col items-center rounded-lg bg-slate-100 px-3 py-2">
       <span className="text-xs uppercase tracking-wide text-slate-500">{label}</span>
       <span className="text-lg font-semibold text-slate-900">{value}</span>
     </div>
@@ -13,7 +13,8 @@ function StatPill({ label, value }) {
 }
 
 function QuestionChip({ number, isActive, isAnswered, disabled, onSelect }) {
-  const base = 'rounded-md border px-3 py-1 text-sm font-medium transition-colors';
+  const base =
+    'rounded-md border px-3 py-1 text-sm font-medium transition-colors md:px-2 md:py-1 md:text-xs';
   const activeStyles = 'border-indigo-600 bg-indigo-50 text-indigo-700';
   const answeredStyles = 'border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100';
   const idleStyles = 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100';
@@ -180,7 +181,7 @@ export default function AltTestRunner() {
 
   if (loading) {
     return (
-      <div className="mx-auto mt-20 max-w-3xl rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+      <div className="mx-auto mt-20 max-w-3xl rounded-2xl bg-white p-10 text-center">
         <p className="text-lg font-medium text-slate-600">Loading test…</p>
       </div>
     );
@@ -188,7 +189,7 @@ export default function AltTestRunner() {
 
   if (loadError) {
     return (
-      <div className="mx-auto mt-20 max-w-lg rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+      <div className="mx-auto mt-20 max-w-lg rounded-2xl bg-red-50 p-8 text-center">
         <p className="text-red-700">{loadError}</p>
         <PrimaryButton className="mt-6" onClick={load}>
           Retry
@@ -201,7 +202,7 @@ export default function AltTestRunner() {
 
   if (!inProgress) {
     return (
-      <div className="mx-auto mt-20 max-w-2xl space-y-4 rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+      <div className="mx-auto mt-20 max-w-2xl space-y-4 rounded-2xl bg-white p-10 text-center">
         <h1 className="text-2xl font-semibold text-slate-900">Test completed</h1>
         <p className="text-slate-600">
           This test has already been submitted. You can review the outcomes in your dashboard.
@@ -211,8 +212,8 @@ export default function AltTestRunner() {
   }
 
   return (
-    <div className="mx-auto my-10 w-full max-w-5xl space-y-8 rounded-3xl border border-slate-200 bg-white p-8 shadow-lg">
-      <header className="space-y-4">
+    <div className="mx-auto flex h-screen w-full max-w-5xl flex-col gap-4 overflow-hidden bg-white px-6 py-6">
+      <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold text-slate-900">{test.test_name}</h1>
           <div className="flex gap-2">
@@ -235,7 +236,7 @@ export default function AltTestRunner() {
         </div>
       </header>
 
-      <section className="space-y-3">
+      <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Navigate items
         </h2>
@@ -258,8 +259,8 @@ export default function AltTestRunner() {
       </section>
 
       {currentQuestion && (
-        <section className="space-y-6">
-          <div className="space-y-2">
+        <section className="flex flex-1 flex-col gap-4 overflow-y-auto">
+          <div className="space-y-1.5">
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
               Item {currentQuestion.question_number}
             </p>
@@ -274,12 +275,12 @@ export default function AltTestRunner() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2">
             {test.options.map(option => {
               const selected = answers[currentQuestion.question_number]?.answer === option;
               const base = 'rounded-xl border px-4 py-3 text-left font-medium transition';
               const styles = selected
-                ? 'border-indigo-600 bg-indigo-600 text-white shadow'
+                ? 'border-indigo-600 bg-indigo-600 text-white'
                 : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white';
               return (
                 <button
@@ -296,7 +297,7 @@ export default function AltTestRunner() {
         </section>
       )}
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6">
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
         <div className="flex gap-2">
           <SecondaryButton onClick={goPrev} disabled={!canGoPrev}>
             Previous answered

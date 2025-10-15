@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchResult, submitAnswer, markComplete } from '../api/testing';
+import ProgressSlider from '../components/ProgressSlider';
 
 function StatPill({ label, value }) {
   return (
@@ -77,6 +78,7 @@ export default function AltTestRunner() {
   const [loadError, setLoadError] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sliderValue, setSliderValue] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -118,10 +120,23 @@ export default function AltTestRunner() {
   const firstUnansweredIndex = questionMeta.findIndex(q => !q.answered);
   const liveIndex = firstUnansweredIndex === -1 ? questionMeta.length - 1 : firstUnansweredIndex;
 
-  const answeredIndices = questionMeta.filter(q => q.answered).map(q => q.index);
-  const allowedIndices = firstUnansweredIndex === -1
-    ? answeredIndices
-    : [...answeredIndices, liveIndex];
+  const answeredIndices = useMemo(
+    () => questionMeta.filter(q => q.answered).map(q => q.index),
+    [questionMeta],
+  );
+  const allowedIndices = useMemo(
+    () => (firstUnansweredIndex === -1
+      ? answeredIndices
+      : [...answeredIndices, liveIndex]
+    ),
+    [answeredIndices, firstUnansweredIndex, liveIndex],
+  );
+
+  const highestAccessibleIndex = useMemo(() => {
+    if (!test || !test.questions?.length) return 0;
+    const candidates = [...allowedIndices, activeIdx].filter(idx => typeof idx === 'number');
+    return candidates.length ? Math.max(...candidates) : 0;
+  }, [activeIdx, allowedIndices, test]);
 
   const canGoPrev = answeredIndices.some(i => i < activeIdx);
   const canGoNext = allowedIndices.some(i => i > activeIdx);
@@ -139,6 +154,36 @@ export default function AltTestRunner() {
   };
 
   const currentQuestion = test?.questions[activeIdx];
+
+  useEffect(() => {
+    if (!test || !test.questions?.length) return;
+    const currentNumber = test.questions[activeIdx]?.question_number ?? 0;
+    setSliderValue(currentNumber);
+  }, [activeIdx, test]);
+
+  const progressPercent = totalQuestions === 0
+    ? 0
+    : Math.round((answeredCount / totalQuestions) * 100);
+
+  const sliderMin = test?.questions?.[0]?.question_number ?? 0;
+  const sliderMax = test?.questions?.[highestAccessibleIndex]?.question_number ?? sliderMin;
+
+  const handleSliderChange = event => {
+    if (!test) return;
+    const rawValue = Number(event.target.value);
+    if (!Number.isFinite(rawValue)) return;
+
+    const cappedValue = Math.min(rawValue, sliderMax);
+    const nextIndex = test.questions.findIndex(q => q.question_number === cappedValue);
+
+    if (nextIndex !== -1) {
+      setSliderValue(cappedValue);
+      setActiveIdx(nextIndex);
+      return;
+    }
+
+    setSliderValue(cappedValue);
+  };
 
   const handleAnswer = async (questionNumber, option) => {
     if (!test) return;
@@ -221,18 +266,23 @@ export default function AltTestRunner() {
             <StatPill label="Current" value={`#${currentQuestion?.question_number ?? '-'}`} />
           </div>
         </div>
-        <div>
+        <div className="space-y-2">
           <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-slate-500">
             <span>Progress</span>
-            <span>{totalQuestions === 0 ? '0%' : `${Math.round((answeredCount / totalQuestions) * 100)}%`}</span>
+            <span>{progressPercent}%</span>
           </div>
-          <progress
-            value={answeredCount}
-            max={totalQuestions}
-            className="mt-1 h-3 w-full overflow-hidden rounded-full bg-slate-100"
-          >
-            {answeredCount}
-          </progress>
+          <ProgressSlider
+            value={sliderValue}
+            min={sliderMin}
+            max={sliderMax}
+            onChange={handleSliderChange}
+            bubbleContent={`${progressPercent}%`}
+            fillPercent={progressPercent}
+            minLabel={sliderMin ? `#${sliderMin}` : '—'}
+            maxLabel={sliderMax ? `#${sliderMax}` : '—'}
+            disabled={sliderMax <= sliderMin}
+            ariaLabel="Navigate questions"
+          />
         </div>
       </header>
 

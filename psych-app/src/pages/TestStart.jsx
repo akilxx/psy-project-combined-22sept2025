@@ -5,7 +5,7 @@ import { startTest } from '../api/testing';
 import useAuth from '../hooks/useAuth';
 import { addAnonTest } from '../utils/anonTests';
 
-export default function TestStart() {
+export default function TestStart({ useAltRunner = false }) {
   const { testId }  = useParams();
   const { user }    = useAuth();          // null when anonymous
   const navigate    = useNavigate();
@@ -27,7 +27,10 @@ export default function TestStart() {
         if (!user) addAnonTest(data.test_result_id);
 
         // (3️)  hand off to the live runner
-        navigate(`/test/${data.test_result_id}`);
+        const target = useAltRunner
+          ? `/test/${data.test_result_id}/alt`
+          : `/test/${data.test_result_id}`;
+        navigate(target);
       } catch (err) {
         setError(
           err.response?.data?.detail ||
@@ -35,7 +38,7 @@ export default function TestStart() {
         );
       }
     })();
-  }, [testId, user, navigate]);
+  }, [testId, user, navigate, useAltRunner]);
 
   /* ────────────────────────── UI states ────────────────────────── */
   if (error)

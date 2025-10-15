@@ -240,13 +240,15 @@ export default function TestRunner() {
             </h3>
           </div>
 
-          {/* answer grid + side chevrons (all breakpoints) */}
-          {/* Desktop / tablet layout with side chevrons */}
-          <div className="relative w-full hidden sm:block">
+          {/* answer grid with responsive chevrons */}
+          <div className="relative w-full">
             <button
               onClick={goPrev}
               disabled={!canGoPrev}
-              className={clsx(chevronBtnBase, 'absolute left-0 top-1/2 -translate-y-1/2')}
+              className={clsx(
+                chevronBtnBase,
+                'hidden sm:inline-flex absolute left-0 top-1/2 -translate-y-1/2'
+              )}
               aria-label="Previous answered item"
             >
               <ChevronLeftIcon className="w-10 h-10" strokeWidth={canGoPrev ? 3 : 2} />
@@ -255,8 +257,8 @@ export default function TestRunner() {
             <div
               className={clsx(
                 contentMaxWCls,
-                sidePadCls,
-                'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'
+                'grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3',
+                sidePadCls
               )}
             >
               {renderOptions()}
@@ -265,24 +267,14 @@ export default function TestRunner() {
             <button
               onClick={goNext}
               disabled={!canGoNext}
-              className={clsx(chevronBtnBase, 'absolute right-0 top-1/2 -translate-y-1/2')}
+              className={clsx(
+                chevronBtnBase,
+                'hidden sm:inline-flex absolute right-0 top-1/2 -translate-y-1/2'
+              )}
               aria-label="Next answered item"
             >
               <ChevronRightIcon className="w-10 h-10" strokeWidth={canGoNext ? 3 : 2} />
             </button>
-          </div>
-
-          {/* Mobile layout without side chevrons */}
-          <div className="w-full sm:hidden">
-            <div
-              className={clsx(
-                contentMaxWCls,
-                mobileSidePadCls,
-                'grid grid-cols-1 gap-3'
-              )}
-            >
-              {renderOptions()}
-            </div>
           </div>
         </section>
 

@@ -1,7 +1,7 @@
 //psych-app/src/pages/TestRunner.jsx
 /*  
     ————————————————————————————————————————————
-    • Plain ModifiedCard (no Hero-UI Card context)
+    • ModifiedCard styling reproduced inline (no Hero-UI Card context)
     • Unified vertical spacing rhythm
     • Side chevrons at inner edge of ModifiedCard (absolute; all breakpoints)
     • ProgressBar, question text, options grid, and Submit share identical width
@@ -14,7 +14,6 @@ import clsx from 'clsx';
 
 import { fetchResult, submitAnswer, markComplete } from '../api/testing';
 import ProgressBar from '../components/ProgressBar';
-import ModifiedCard from '../components/ModifiedCard';
 import RippleButton from '../components/RippleButton';
 
 export default function TestRunner() {
@@ -51,7 +50,9 @@ export default function TestRunner() {
   /* Helpers: same wrapper + card classes for all branches */
   const wrapperCls = 'pt-4 px-2 flex justify-center';
   const cardBaseCls = `
-    w-full max-w-[90vw] flex flex-col
+    rounded-[40px] cursor-pointer relative text-white mx-auto
+    w-full max-w-[90vw] h-auto max-h-[95vh]
+    flex flex-col
     h-[calc(100vh-3.5rem-2rem)]      /* ~navbar + top/bottom gutters */
     bg-white
   `;
@@ -67,7 +68,7 @@ export default function TestRunner() {
   if (!inProgress && test) {
     return (
       <div className={wrapperCls}>
-        <ModifiedCard className={cardBaseCls}>
+        <div className={cardBaseCls}>
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="max-w-xl w-full rounded-lg bg-[#EBEBEB] p-6 text-center space-y-2">
               <h2 className="text-xl font-semibold text-black">This test has been completed</h2>
@@ -76,7 +77,7 @@ export default function TestRunner() {
               </p>
             </div>
           </div>
-        </ModifiedCard>
+        </div>
       </div>
     );
   }
@@ -85,7 +86,7 @@ export default function TestRunner() {
   if (!test || idx === null) {
     return (
       <div className={wrapperCls}>
-        <ModifiedCard className={`relative ${cardBaseCls}`}>
+        <div className={cardBaseCls}>
           {/* invisible scaffold */}
           <div className="px-6 pt-6 pb-0 invisible">
             <div className="h-4 w-4/5 md:w-7/8 mb-6 bg-transparent" />
@@ -102,7 +103,7 @@ export default function TestRunner() {
           <div className="absolute inset-0 grid place-items-center">
             <div role="status" aria-label="Loading" className="loader" />
           </div>
-        </ModifiedCard>
+        </div>
       </div>
     );
   }
@@ -199,7 +200,7 @@ export default function TestRunner() {
   /* ---------- live render ---------- */
   return (
     <div className={wrapperCls}>
-      <ModifiedCard className={cardBaseCls}>
+      <div className={cardBaseCls}>
         {/* header */}
         <header className="px-5 sm:px-7 pt-6 pb-0">
           {/* ProgressBar aligned to options grid width */}
@@ -334,7 +335,7 @@ export default function TestRunner() {
             </RippleButton>
           </div>
         </footer>
-      </ModifiedCard>
+      </div>
     </div>
   );
 }

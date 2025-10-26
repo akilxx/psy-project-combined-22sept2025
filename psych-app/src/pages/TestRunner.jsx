@@ -1,9 +1,9 @@
 //psych-app/src/pages/TestRunner.jsx
-/*  
+/*
     ————————————————————————————————————————————
-    • ModifiedCard styling reproduced inline (no Hero-UI Card context)
+    • Layout previously wrapped by ModifiedCard now renders directly on page
     • Unified vertical spacing rhythm
-    • Side chevrons at inner edge of ModifiedCard (absolute; all breakpoints)
+    • Side chevrons aligned to answer grid (absolute; all breakpoints)
     • ProgressBar, question text, options grid, and Submit share identical width
     • Submit centered; aligned to answer grid width
 --------------------------------------------------------------------------- */
@@ -49,12 +49,9 @@ export default function TestRunner() {
 
   /* Helpers: same wrapper + card classes for all branches */
   const wrapperCls = 'pt-4 px-2 flex justify-center';
-  const cardBaseCls = `
-    rounded-[40px] cursor-pointer relative text-white mx-auto
-    w-full max-w-[90vw] h-auto max-h-[95vh]
-    flex flex-col
+  const layoutCls = `
+    relative mx-auto flex w-full max-w-[90vw] max-h-[95vh] flex-col
     h-[calc(100vh-3.5rem-2rem)]      /* ~navbar + top/bottom gutters */
-    bg-white
   `;
 
   /* Shared width + side padding for ProgressBar / Question / Grid / Submit
@@ -68,7 +65,7 @@ export default function TestRunner() {
   if (!inProgress && test) {
     return (
       <div className={wrapperCls}>
-        <div className={cardBaseCls}>
+        <div className={layoutCls}>
           <div className="flex flex-1 items-center justify-center px-6">
             <div className="max-w-xl w-full rounded-lg bg-[#EBEBEB] p-6 text-center space-y-2">
               <h2 className="text-xl font-semibold text-black">This test has been completed</h2>
@@ -86,7 +83,7 @@ export default function TestRunner() {
   if (!test || idx === null) {
     return (
       <div className={wrapperCls}>
-        <div className={cardBaseCls}>
+        <div className={layoutCls}>
           {/* invisible scaffold */}
           <div className="px-6 pt-6 pb-0 invisible">
             <div className="h-4 w-4/5 md:w-7/8 mb-6 bg-transparent" />
@@ -200,7 +197,7 @@ export default function TestRunner() {
   /* ---------- live render ---------- */
   return (
     <div className={wrapperCls}>
-      <div className={cardBaseCls}>
+      <div className={layoutCls}>
         {/* header */}
         <header className="px-5 sm:px-7 pt-6 pb-0">
           {/* ProgressBar aligned to options grid width */}

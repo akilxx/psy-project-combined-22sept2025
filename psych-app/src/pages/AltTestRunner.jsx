@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchResult, submitAnswer, markComplete } from '../api/testing';
 import ProgressSlider from '../components/ProgressSlider';
+import AnimatedOptionButton from '../components/AnimatedOptionButton';
 
 function StatPill({ label, value }) {
   return (
@@ -79,6 +80,7 @@ export default function AltTestRunner() {
   const [actionError, setActionError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [sliderValue, setSliderValue] = useState(0);
+  const [pendingAnswer, setPendingAnswer] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -186,8 +188,9 @@ export default function AltTestRunner() {
   };
 
   const handleAnswer = async (questionNumber, option) => {
-    if (!test) return;
+    if (!test || pendingAnswer) return;
     setActionError(null);
+    setPendingAnswer({ questionNumber, option });
 
     setAnswers(prev => {
       const next = { ...prev, [questionNumber]: { answer: option } };
@@ -203,8 +206,10 @@ export default function AltTestRunner() {
     try {
       const { data } = await submitAnswer(resultId, questionNumber, option);
       setAnswers(prev => ({ ...prev, ...data.answers }));
-    } catch (_) {
+    } catch {
       setActionError('We could not save that answer. Please tap it again.');
+    } finally {
+      setPendingAnswer(null);
     }
   };
 
@@ -216,7 +221,7 @@ export default function AltTestRunner() {
     setActionError(null);
     try {
       await markComplete(resultId);
-    } catch (_) {
+    } catch {
       // ignore completion errors, keep navigation consistent
     } finally {
       setSubmitting(false);
@@ -327,20 +332,22 @@ export default function AltTestRunner() {
 
           <div className="grid flex-1 grid-cols-1 gap-2 md:grid-cols-2">
             {test.options.map(option => {
-              const selected = answers[currentQuestion.question_number]?.answer === option;
-              const base = 'rounded-xl border px-4 py-3 text-left font-medium transition';
-              const styles = selected
-                ? 'border-indigo-600 bg-indigo-600 text-white'
-                : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white';
+              const questionNumber = currentQuestion.question_number;
+              const selected = answers[questionNumber]?.answer === option;
+              const isPending =
+                pendingAnswer?.questionNumber === questionNumber &&
+                pendingAnswer.option === option;
+              const pendingForQuestion = pendingAnswer?.questionNumber === questionNumber;
+
               return (
-                <button
-                  type="button"
+                <AnimatedOptionButton
                   key={option}
-                  onClick={() => handleAnswer(currentQuestion.question_number, option)}
-                  className={`${base} ${styles}`.trim()}
-                >
-                  {option}
-                </button>
+                  label={option}
+                  selected={selected}
+                  loading={isPending}
+                  disabled={pendingForQuestion && !isPending}
+                  onClick={() => handleAnswer(questionNumber, option)}
+                />
               );
             })}
           </div>

@@ -78,7 +78,7 @@ export default function TestRunner() {
       autoAdvanceRef.current = setTimeout(() => {
         setIdx(nextIdx);
         autoAdvanceRef.current = null;
-      }, 220);
+      }, 450 /* allow ripple animation (~400ms) to finish */);
     },
     [clearAutoAdvance],
   );

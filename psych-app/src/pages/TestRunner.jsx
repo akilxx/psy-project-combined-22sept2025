@@ -7,7 +7,7 @@
     • ProgressBar, question text, options grid, and Submit share identical width
     • Submit centered; aligned to answer grid width
 --------------------------------------------------------------------------- */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
@@ -60,6 +60,36 @@ export default function TestRunner() {
   const contentMaxWCls = 'w-full max-w-5xl mx-auto';
   const sidePadCls = 'px-5 sm:px-16';
   const mobileSidePadCls = 'px-5';
+
+  const autoAdvanceRef = useRef(null);
+
+  const clearAutoAdvance = useCallback(() => {
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current);
+      autoAdvanceRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => clearAutoAdvance(), [clearAutoAdvance]);
+
+  const scheduleAutoAdvance = useCallback(
+    nextIdx => {
+      clearAutoAdvance();
+      autoAdvanceRef.current = setTimeout(() => {
+        setIdx(nextIdx);
+        autoAdvanceRef.current = null;
+      }, 220);
+    },
+    [clearAutoAdvance],
+  );
+
+  const handleSeek = useCallback(
+    newIdx => {
+      clearAutoAdvance();
+      setIdx(newIdx);
+    },
+    [clearAutoAdvance],
+  );
 
   /* ---------- completed-test view ---------- */
   if (!inProgress && test) {
@@ -114,13 +144,13 @@ export default function TestRunner() {
   const firstAnswered = Boolean(answers[test.questions[0].question_number]);
 
   const handleAnswer = async (qNum, ans) => {
-    setAnswers(prev => {
-      const next = { ...prev, [qNum]: { answer: ans } };
-      if (idx === liveIdx && liveIdx < test.questions.length - 1) {
-        setIdx(liveIdx + 1);
-      }
-      return next;
-    });
+    const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
+
+    setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
+
+    if (shouldAutoAdvance) {
+      scheduleAutoAdvance(idx + 1);
+    }
 
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
@@ -145,12 +175,14 @@ export default function TestRunner() {
   const canGoNext = allowedIdxs.some(i => i > idx);
 
   const goPrev = () => {
+    clearAutoAdvance();
     if (!canGoPrev) return;
     const prev = [...answeredIdxs].filter(i => i < idx).pop();
     setIdx(prev);
   };
 
   const goNext = () => {
+    clearAutoAdvance();
     if (!canGoNext) return;
     const next = [...allowedIdxs].filter(i => i > idx).shift();
     setIdx(next);
@@ -161,7 +193,11 @@ export default function TestRunner() {
 
   const handleSubmit = async () => {
     if (!allAnswered) return;
-    try { await markComplete(resultId); } catch (_) {}
+    try {
+      await markComplete(resultId);
+    } catch (err) {
+      console.warn('markComplete failed', err);
+    }
     nav(`/results/${resultId}`);
   };
 
@@ -207,7 +243,7 @@ export default function TestRunner() {
               total={test.total_questions_number}
               idx={idx}
               maxIdx={liveIdx}
-              onSeek={firstAnswered ? newIdx => setIdx(newIdx) : () => {}}
+              onSeek={firstAnswered ? handleSeek : () => {}}
               disabled={!firstAnswered}
             />
           </div>

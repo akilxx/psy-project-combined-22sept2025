@@ -1,0 +1,50 @@
+/* Exact ripple utility from your snippet (SCSS -> plain CSS) */
+
+.c-ripple {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  pointer-events: none; /* lets clicks through to the button */
+}
+
+.c-ripple__circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%,-50%);
+  opacity: 0;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, .35);
+}
+
+/* This matches: .c-ripple.is-active & { animation: a-ripple .4s ease-in; } */
+.c-ripple.is-active .c-ripple__circle {
+  animation: a-ripple .4s ease-in;
+}
+
+/* Keyframes exactly as provided (plus -webkit- for iOS) */
+@keyframes a-ripple {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% {
+    width: 200%;
+    padding-bottom: 200%;
+    opacity: 0;
+  }
+}
+
+@-webkit-keyframes a-ripple {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% {
+    width: 200%;
+    padding-bottom: 200%;
+    opacity: 0;
+  }
+}

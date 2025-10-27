@@ -1,0 +1,199 @@
+// psych-app/src/components/AnimatedOptionButton.module.scss
+
+:global(:root) {
+  --option-button-bg: #f8fafc;
+  --option-button-bg-selected: linear-gradient(135deg, #4338ca 0%, #6366f1 100%);
+  --option-button-border: rgba(148, 163, 184, 0.4);
+  --option-button-border-hover: rgba(99, 102, 241, 0.7);
+  --option-button-border-selected: rgba(129, 140, 248, 0.9);
+  --option-button-text: #1f2937;
+  --option-button-text-selected: #ffffff;
+  --option-button-shadow: 0 12px 22px -12px rgba(99, 102, 241, 0.45);
+  --option-button-sheen: rgba(255, 255, 255, 0.65);
+  --option-button-ring: rgba(99, 102, 241, 0.18);
+  --option-button-loader: #eef2ff;
+}
+
+@keyframes sheen-slide {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(150%) skewX(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.optionButton {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+  align-items: stretch;
+  justify-content: center;
+  border: 1px solid var(--option-button-border);
+  border-radius: 18px;
+  background: var(--option-button-bg);
+  color: var(--option-button-text);
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease,
+    background 180ms ease, color 180ms ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.optionButton:hover,
+.optionButton:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--option-button-border-hover);
+  box-shadow: var(--option-button-shadow);
+  outline: none;
+}
+
+.optionButton:disabled {
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.content {
+  position: relative;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+
+.label {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+}
+
+.glow {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 0%, var(--option-button-sheen) 35%,
+      transparent 70%);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.optionButton:hover .glow,
+.optionButton:focus-visible .glow {
+  opacity: 1;
+  animation: sheen-slide 1.1s ease;
+}
+
+.pulseRing {
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid transparent;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.selected {
+  background: var(--option-button-bg-selected);
+  border-color: var(--option-button-border-selected);
+  color: var(--option-button-text-selected);
+  box-shadow: var(--option-button-shadow);
+}
+
+.selected .pulseRing {
+  border-color: var(--option-button-ring);
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+
+.loading {
+  cursor: wait;
+}
+
+.disabled {
+  opacity: 0.65;
+}
+
+.loader {
+  position: relative;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--option-button-loader);
+  animation: spin 0.8s linear infinite;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+.visuallyHidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+}
+
+.optionButton:disabled .pulseRing,
+.optionButton:disabled .glow {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .optionButton,
+  .optionButton:hover,
+  .optionButton:focus-visible {
+    transition: none;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .glow,
+  .pulseRing,
+  .loader {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

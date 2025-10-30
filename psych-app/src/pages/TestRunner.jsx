@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
+import AnimatedSubmitButton from '../components/AnimatedSubmitButton';
 
 import { fetchResult, submitAnswer, markComplete } from '../api/testing';
 import ProgressBar from '../components/ProgressBar';
@@ -218,11 +219,11 @@ export default function TestRunner() {
           key={`${q.question_number}-${opt}`}
           onClick={() => handleAnswer(q.question_number, opt)}
           className={clsx(
-            ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition border-0',
+            ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition ',
 
             selected
-              ? 'bg-black text-white'
-              : 'bg-[#EBEBEB] text-black hover:bg-[black] hover:text-[white] focus:outline-none',
+              ? 'bg-black text-white text-sm'
+              : 'bg-blue-50 text-blue-900 text-sm border border-blue-100 hover:bg-[black] hover:text-[white]',
           )}
         >
           <span className="inline-block animate-fadeIn">{opt}</span>
@@ -330,18 +331,19 @@ export default function TestRunner() {
               <ChevronLeftIcon className="w-10 h-10" strokeWidth={canGoPrev ? 3 : 2} />
             </button>
 
-            <RippleButton
-              onClick={handleSubmit}
-              disabled={!allAnswered}
+            <AnimatedSubmitButton
+              onClick={(e) => {
+                if (!allAnswered) { e.preventDefault(); return; }
+                handleSubmit(e);
+              }}
               className={clsx(
-                'px-8 py-3 leading-[16px] rounded-[10px] font-bold',
-                'bg-[#293ABF] text-[white]',
-                'disabled:bg-[#EBEBEB] disabled:text-gray-400 disabled:cursor-not-allowed',
-                allAnswered && 'hover:bg-[black] hover:text-[white]'
+                "tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold",
+                !allAnswered && "is-disabled",
+                allAnswered && "enabled"
               )}
-            >
-              Submit
-            </RippleButton>
+              
+              labels={["Submit", "Submitting"]}
+            />
 
             <button
               onClick={goNext}
@@ -354,18 +356,18 @@ export default function TestRunner() {
           </div>
 
           <div className={clsx(contentMaxWCls, sidePadCls, 'hidden sm:flex justify-center')}>
-            <RippleButton
-              onClick={handleSubmit}
-              disabled={!allAnswered}
+            <AnimatedSubmitButton
+              onClick={(e) => {
+                if (!allAnswered) { e.preventDefault(); return; }
+                handleSubmit(e);
+              }}
               className={clsx(
-                          "px-8 py-3 leading-[16px] rounded-[10px] font-bold",
-                          "bg-[#293ABF] text-[white]",
-                          "disabled:bg-[#EBEBEB] disabled:text-gray-400 disabled:cursor-not-allowed",
-                          allAnswered && "hover:bg-[black] hover:text-[white]"
-                        )}
-            >
-              Submit
-            </RippleButton>
+                "tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold",
+                !allAnswered && "is-disabled",
+                allAnswered && "enabled"
+              )}
+              labels={["Submit", "Submitting"]}
+            />
           </div>
         </footer>
       </div>

@@ -15,8 +15,8 @@ export default function RippleButton({
   const circleRef = React.useRef(null);
 
   const base =
-    "relative rounded px-5 py-3 min-w-max overflow-hidden shadow " +
-    "focus:outline-none transition-transform duration-200 ease-out select-none";
+    "relative rounded px-5 py-3 min-w-max overflow-hidden" +
+    "transition-transform duration-200 ease-out select-none";
 
   // This replicates your jQuery click handler logic exactly (but in React):
   const triggerExactRipple = (nativeEvt) => {

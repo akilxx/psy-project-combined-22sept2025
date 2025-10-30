@@ -75,7 +75,7 @@ export default function ProgressBar({
     >
       {/* filled track */}
       <div
-        className={`absolute left-0 top-0 h-2 bg-[#C7D530]  rounded-full transition-[width] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`absolute left-0 top-0 h-2 bg-blue-400  rounded-full transition-[width] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         style={{ width: `${pct}%` }}
       />
 

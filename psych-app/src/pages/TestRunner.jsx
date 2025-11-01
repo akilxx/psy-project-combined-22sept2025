@@ -237,6 +237,12 @@ export default function TestRunner() {
       <div className={layoutCls}>
         {/* header */}
         <header className="px-5 sm:px-7 pt-6 pb-0">
+          {/* Item pill */}
+          <div className="flex justify-center mb-10">
+            <h2 className="text-xl font-bold text-[#B5B5B5] inline-block bg-[white] px-3 py-1 rounded-[10px]">
+              Item {q.question_number} of {test.total_questions_number}
+            </h2>
+          </div>
           {/* ProgressBar aligned to options grid width */}
           <div className={clsx(contentMaxWCls, sidePadCls)}>
             <ProgressBar
@@ -250,14 +256,8 @@ export default function TestRunner() {
           </div>
         </header>
 
-        {/* body — drives all vertical spacing below ProgressBar */}
+        {/* body */}
         <section className="px-5 sm:px-7 pt-10 pb-0">
-          {/* Item pill */}
-          <div className="flex justify-center mb-10">
-            <h2 className="text-lg font-bold text-black inline-block bg-[#EBEBEB] px-3 py-1 rounded-[10px]">
-              Item {q.question_number} of {test.total_questions_number}
-            </h2>
-          </div>
 
           {error && (
             <p className="text-red-600 text-center mb-4">

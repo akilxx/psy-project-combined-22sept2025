@@ -1,7 +1,6 @@
 //psych-app/src/App.jsx
 
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
 import AuthProvider from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Register from './pages/Register';
@@ -21,7 +20,6 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Navbar />
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/register" element={<Register />} />

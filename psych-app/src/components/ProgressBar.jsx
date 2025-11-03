@@ -118,50 +118,48 @@ export default function ProgressBar({
   /* ── render ── */
   return (
     <div className="w-full overflow-visible">
-      {/* Mobile scales down uniformly; desktop full size */}
-      <div className="transform-gpu origin-left scale-[0.88] sm:scale-100 will-change-transform">
-        {/* Keep bar unchanged; allow tear to hang outside */}
-        <div className="w-full bg-[#F7F7F7] rounded-lg sm:rounded-xl overflow-visible px-3 sm:px-6 py-2 sm:py-4">
+      {/* Keep bar unchanged; removing mobile scale keeps width aligned with question/grid columns */}
+      <div className="w-full bg-[#F7F7F7] rounded-lg sm:rounded-xl overflow-visible px-3 sm:px-6 py-2 sm:py-4">
+        <div
+          ref={barRef}
+          onPointerDown={handleDown}
+          className={
+            "relative z-20 w-full h-2 bg-[#E6E6E6] rounded-md sm:rounded-full select-none " +
+            (disabled ? "cursor-not-allowed" : "cursor-pointer")
+          }
+          style={{ touchAction: "none" }}
+        >
+          {/* filled track */}
           <div
-            ref={barRef}
-            onPointerDown={handleDown}
-            className={
-              "relative z-20 w-full h-2 bg-[#E6E6E6] rounded-md sm:rounded-full select-none " +
-              (disabled ? "cursor-not-allowed" : "cursor-pointer")
-            }
-            style={{ touchAction: "none" }}
-          >
-            {/* filled track */}
-            <div
-              className="absolute left-0 top-0 h-2 bg-blue-400 rounded-md sm:rounded-full transition-[width]"
-              style={{ width: `${pct}%` }}
-            />
+            className="absolute left-0 top-0 h-2 bg-blue-400 rounded-md sm:rounded-full transition-[width]"
+            style={{ width: `${pct}%` }}
+          />
 
-            {/* thumb + tear */}
-            {onSeek && !Number.isNaN(thumbPct) && (
-              <div
-                role="slider"
-                aria-valuemin={0}
-                aria-valuemax={maxIdx}
-                aria-valuenow={thumbIndex}
-                aria-disabled={disabled}
-                tabIndex={disabled ? -1 : 0}
-                onPointerDown={handleDown}
-                className={
-                  "absolute top-1/2 rounded-full " +
-                  "h-3 w-3 sm:h-4 sm:w-4 border-2 " +
-                  "transition-[left] outline-none " +
-                  (disabled
-                    ? "cursor-not-allowed"
-                    : "shadow cursor-grab active:cursor-grabbing")
-                }
-                style={{
-                  left: `${Math.max(0, Math.min(100, thumbPct))}%`,
-                  transform: "translate(-50%, -50%)",
-                  backgroundColor: disabled ? GRAY_DISABLED : BLUE_400, // solid color, no opacity
-                  borderColor: disabled ? GRAY_DISABLED : BLUE_400,
-                }}
-              >
+          {/* thumb + tear */}
+          {onSeek && !Number.isNaN(thumbPct) && (
+            <div
+              role="slider"
+              aria-valuemin={0}
+              aria-valuemax={maxIdx}
+              aria-valuenow={thumbIndex}
+              aria-disabled={disabled}
+              tabIndex={disabled ? -1 : 0}
+              onPointerDown={handleDown}
+              className={
+                "absolute top-1/2 rounded-full " +
+                "h-3 w-3 sm:h-4 sm:w-4 border-2 " +
+                "transition-[left] outline-none " +
+                (disabled
+                  ? "cursor-not-allowed"
+                  : "shadow cursor-grab active:cursor-grabbing")
+              }
+              style={{
+                left: `${Math.max(0, Math.min(100, thumbPct))}%`,
+                transform: "translate(-50%, -50%)",
+                backgroundColor: disabled ? GRAY_DISABLED : BLUE_400, // solid color, no opacity
+                borderColor: disabled ? GRAY_DISABLED : BLUE_400,
+              }}
+            >
                 {/* tear: top edge just below thumb; bottom hangs outside gray rectangle */}
                 {/* Mobile tear */}
                 <div
@@ -202,7 +200,6 @@ export default function ProgressBar({
                 </div>
               </div>
             )}
-          </div>
         </div>
       </div>
     </div>

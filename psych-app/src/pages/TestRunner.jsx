@@ -1,4 +1,4 @@
-//psych-app/src/pages/TestRunner.jsx
+// psych-app/src/pages/TestRunner.jsx
 /*
     ————————————————————————————————————————————
     • Layout previously wrapped by ModifiedCard now renders directly on page
@@ -7,7 +7,7 @@
     • ProgressBar, question text, options grid, and Submit share identical width
     • Submit centered; aligned to answer grid width
 --------------------------------------------------------------------------- */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import AnimatedSubmitButton from '../components/AnimatedSubmitButton';
@@ -47,6 +47,9 @@ export default function TestRunner() {
 
   useEffect(() => { load(); }, [load]);
 
+  /* 🧠 HOOKS MUST STAY ABOVE ANY EARLY RETURN */
+  const handleSeek = useCallback((newIdx) => setIdx(newIdx), []);
+
   /* Helpers: same wrapper + card classes for all branches */
   const wrapperCls = 'pt-4 px-2 flex justify-center';
   const layoutCls = `
@@ -54,42 +57,10 @@ export default function TestRunner() {
     h-[calc(100vh-3.5rem-2rem)]      /* ~navbar + top/bottom gutters */
   `;
 
-  /* Shared width + side padding for ProgressBar / Question / Grid / Submit
-     NOTE: sidePadCls indents content so chevrons (abs-positioned at card edge)
-     don't overlap the interactive elements. Adjust values if needed. */
+  /* Shared width + side padding for ProgressBar / Question / Grid / Submit */
   const contentMaxWCls = 'w-full max-w-5xl mx-auto';
   const sidePadCls = 'px-5 sm:px-16';
   const mobileSidePadCls = 'px-5';
-
-  const autoAdvanceRef = useRef(null);
-
-  const clearAutoAdvance = useCallback(() => {
-    if (autoAdvanceRef.current) {
-      clearTimeout(autoAdvanceRef.current);
-      autoAdvanceRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => () => clearAutoAdvance(), [clearAutoAdvance]);
-
-  const scheduleAutoAdvance = useCallback(
-    nextIdx => {
-      clearAutoAdvance();
-      autoAdvanceRef.current = setTimeout(() => {
-        setIdx(nextIdx);
-        autoAdvanceRef.current = null;
-      }, 450 /* allow ripple animation (~400ms) to finish */);
-    },
-    [clearAutoAdvance],
-  );
-
-  const handleSeek = useCallback(
-    newIdx => {
-      clearAutoAdvance();
-      setIdx(newIdx);
-    },
-    [clearAutoAdvance],
-  );
 
   /* ---------- completed-test view ---------- */
   if (!inProgress && test) {
@@ -141,16 +112,20 @@ export default function TestRunner() {
   );
   const liveIdx =
     firstUnansweredIdx === -1 ? test.questions.length : firstUnansweredIdx;
-  const firstAnswered = Boolean(answers[test.questions[0].question_number]);
+
+  // Safe guard (prevents crash if questions array is empty)
+  const firstAnswered =
+    Array.isArray(test?.questions) && test.questions.length > 0
+      ? Boolean(answers[test.questions[0].question_number])
+      : false;
 
   const handleAnswer = async (qNum, ans) => {
     const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
 
     setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
 
-    if (shouldAutoAdvance) {
-      scheduleAutoAdvance(idx + 1);
-    }
+    // RippleButton gates onClick until ripple ends; advance immediately here.
+    if (shouldAutoAdvance) setIdx(idx + 1);
 
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
@@ -175,14 +150,12 @@ export default function TestRunner() {
   const canGoNext = allowedIdxs.some(i => i > idx);
 
   const goPrev = () => {
-    clearAutoAdvance();
     if (!canGoPrev) return;
     const prev = [...answeredIdxs].filter(i => i < idx).pop();
     setIdx(prev);
   };
 
   const goNext = () => {
-    clearAutoAdvance();
     if (!canGoNext) return;
     const next = [...allowedIdxs].filter(i => i > idx).shift();
     setIdx(next);
@@ -219,10 +192,9 @@ export default function TestRunner() {
           onClick={() => handleAnswer(q.question_number, opt)}
           className={clsx(
             ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition ',
-
             selected
               ? 'bg-black text-white text-sm'
-              : 'bg-blue-50 text-blue-900 text-sm border border-blue-100 hover:bg-blue-100 hover:text-[black]',
+              : 'bg-blue-50 text-black text-sm hover:bg-black border border-blue-100 hover:text-white hover:border-black',
           )}
         >
           <span className="inline-block animate-fadeIn">{opt}</span>
@@ -265,7 +237,7 @@ export default function TestRunner() {
           )}
 
           {/* Question text aligned to grid */}
-          <div 
+          <div
             key={`qtxt-${q.question_number}`}
             className={clsx(contentMaxWCls, sidePadCls, 'mb-10 animate-fadeIn')}
           >
@@ -285,15 +257,14 @@ export default function TestRunner() {
               )}
               aria-label="Previous answered item"
             >
-              
-              <Chevron 
-                direction="left" 
-                size={40} 
-                thickness={canGoPrev ? 6 : 4} 
-                color={canGoPrev ? "black" : "#9CA3AF"} 
-                hoverColor={canGoPrev ? "blue" : "#9CA3AF"} 
-                scale={0.6} 
-                hoverScale={0.8} 
+              <Chevron
+                direction="left"
+                size={40}
+                thickness={canGoPrev ? 6 : 4}
+                color={canGoPrev ? "black" : "#9CA3AF"}
+                hoverColor={canGoPrev ? "blue" : "#9CA3AF"}
+                scale={0.6}
+                hoverScale={0.8}
               />
             </button>
 
@@ -316,16 +287,14 @@ export default function TestRunner() {
               )}
               aria-label="Next answered item"
             >
-              
-
-              <Chevron 
-                direction="right" 
-                size={40} 
-                thickness={canGoNext ? 6 : 4} 
-                color={canGoNext ? "black" : "#9CA3AF"} 
-                hoverColor={canGoNext ? "blue" : "#9CA3AF"} 
-                scale={0.6} 
-                hoverScale={0.8} 
+              <Chevron
+                direction="right"
+                size={40}
+                thickness={canGoNext ? 6 : 4}
+                color={canGoNext ? "black" : "#9CA3AF"}
+                hoverColor={canGoNext ? "blue" : "#9CA3AF"}
+                scale={0.6}
+                hoverScale={0.8}
               />
             </button>
           </div>
@@ -346,15 +315,15 @@ export default function TestRunner() {
               className={clsx(chevronBtnBase)}
               aria-label="Previous answered item"
             >
-              <Chevron 
-                direction="left" 
-                size={40} 
-                thickness={canGoPrev ? 6 : 4} 
-                color={canGoPrev ? "black" : "#9CA3AF"} 
-                hoverColor={canGoPrev ? "blue" : "#9CA3AF"} 
-                scale={0.6} 
-                hoverScale={0.8} 
-              /> 
+              <Chevron
+                direction="left"
+                size={40}
+                thickness={canGoPrev ? 6 : 4}
+                color={canGoPrev ? "black" : "#9CA3AF"}
+                hoverColor={canGoPrev ? "blue" : "#9CA3AF"}
+                scale={0.6}
+                hoverScale={0.8}
+              />
             </button>
 
             <AnimatedSubmitButton
@@ -367,7 +336,6 @@ export default function TestRunner() {
                 !allAnswered && "is-disabled",
                 allAnswered && "enabled"
               )}
-              
               labels={["Submit", "Submitting"]}
             />
 
@@ -377,14 +345,14 @@ export default function TestRunner() {
               className={clsx(chevronBtnBase)}
               aria-label="Next answered item"
             >
-              <Chevron 
-                direction="right" 
-                size={40} 
-                thickness={canGoNext ? 6 : 4} 
-                color={canGoNext ? "black" : "#9CA3AF"} 
-                hoverColor={canGoNext ? "blue" : "#9CA3AF"} 
-                scale={0.6} 
-                hoverScale={0.8} 
+              <Chevron
+                direction="right"
+                size={40}
+                thickness={canGoNext ? 6 : 4}
+                color={canGoNext ? "black" : "#9CA3AF"}
+                hoverColor={canGoNext ? "blue" : "#9CA3AF"}
+                scale={0.6}
+                hoverScale={0.8}
               />
             </button>
           </div>

@@ -193,7 +193,7 @@ export default function TestRunner() {
           className={clsx(
             ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition ',
             selected
-              ? 'bg-black text-white text-sm'
+              ? 'bg-black text-white text-sm border border-black'
               : 'bg-blue-50 text-black text-sm hover:bg-black border border-blue-100 hover:text-white hover:border-black',
           )}
         >

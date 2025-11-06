@@ -222,7 +222,7 @@ export default function TestRunner() {
 
             selected
               ? 'bg-black text-white text-sm'
-              : 'bg-blue-50 text-blue-900 text-sm border border-blue-100 hover:bg-[black] hover:text-[white]',
+              : 'bg-blue-50 text-blue-900 text-sm border border-blue-100 hover:bg-blue-100 hover:text-[black]',
           )}
         >
           <span className="inline-block animate-fadeIn">{opt}</span>

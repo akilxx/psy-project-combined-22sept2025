@@ -6,6 +6,8 @@ export default  function RippleButton({
   children,
   className = "",
   onClick,
+  onPressStart,
+  pressDelay = 400,
   ...rest
 }) {
   const btnRef = useRef(null);
@@ -17,11 +19,13 @@ export default  function RippleButton({
     const x = e.clientX - rect.left - size / 2;
     const y = e.clientY - rect.top - size / 2;
 
+    if (onPressStart) onPressStart(e);
+
     // Changing the key forces remount so the animation restarts
     setRipple({ x, y, size, key: Date.now() });
 
-    // Pass click upstream after 400 ms
-    if (onClick) setTimeout(() => onClick(e), 400);
+    // Pass click upstream after the configured delay
+    if (onClick) setTimeout(() => onClick(e), pressDelay);
   }
 
   const base =

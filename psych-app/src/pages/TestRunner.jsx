@@ -17,6 +17,8 @@ import ProgressBar from '../components/ProgressBar';
 import ModifiedCard from '../components/ModifiedCard';
 import RippleButton from '../components/RippleButton';
 
+const OPTION_RIPPLE_DELAY = 450;
+
 export default function TestRunner() {
   const { resultId } = useParams();
   const nav = useNavigate();
@@ -27,6 +29,7 @@ export default function TestRunner() {
   const [idx, setIdx] = useState(null);
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   /* ---------------- initial fetch ---------------- */
   const load = useCallback(async () => {
@@ -123,6 +126,8 @@ export default function TestRunner() {
       return next;
     });
 
+    setIsTransitioning(false);
+
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
       setAnswers(prev => ({ ...prev, ...data.answers }));
@@ -142,8 +147,8 @@ export default function TestRunner() {
       ? [...answeredIdxs, liveIdx]
       : answeredIdxs;
 
-  const canGoPrev = answeredIdxs.some(i => i < idx);
-  const canGoNext = allowedIdxs.some(i => i > idx);
+  const canGoPrev = !isTransitioning && answeredIdxs.some(i => i < idx);
+  const canGoNext = !isTransitioning && allowedIdxs.some(i => i > idx);
 
   const goPrev = () => {
     if (!canGoPrev) return;
@@ -189,8 +194,12 @@ export default function TestRunner() {
               total={test.total_questions_number}
               idx={idx}
               maxIdx={liveIdx}
-              onSeek={firstAnswered ? newIdx => setIdx(newIdx) : () => {}}
-              disabled={!firstAnswered}
+              onSeek={
+                firstAnswered && !isTransitioning
+                  ? newIdx => setIdx(newIdx)
+                  : () => {}
+              }
+              disabled={!firstAnswered || isTransitioning}
             />
           </div>
         </header>
@@ -245,13 +254,19 @@ export default function TestRunner() {
                 return (
                   <RippleButton
                     key={`${q.question_number}-${opt}`}
+                    onPressStart={() => {
+                      if (!isTransitioning) {
+                        setIsTransitioning(true);
+                      }
+                    }}
                     onClick={() => handleAnswer(q.question_number, opt)}
+                    pressDelay={OPTION_RIPPLE_DELAY}
                     className={clsx(
                       ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition border-0',
 
                       selected
                         ? 'bg-black text-white'
-                        : 'bg-[#EBEBEB] text-black hover:bg-[black] hover:text-[white] focus:outline-none',
+                        : 'bg-[#EBEBEB] text-black hover:bg-[#d4d4d4] focus:outline-none',
                     )}
                   >
                     <span className="inline-block animate-fadeIn">{opt}</span>

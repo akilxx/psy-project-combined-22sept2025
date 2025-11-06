@@ -6,6 +6,7 @@ export default function RippleButton({
   children,
   className = "",
   onClick,
+  onRippleComplete,
   disabled,
   ...rest
 }) {
@@ -13,6 +14,7 @@ export default function RippleButton({
   const btnRef = React.useRef(null);
   const rippleRef = React.useRef(null);
   const circleRef = React.useRef(null);
+  const rippleActiveRef = React.useRef(false);
 
   const base =
     "relative rounded px-5 py-3 min-w-max overflow-hidden" +
@@ -42,12 +44,22 @@ export default function RippleButton({
 
   const onPointerDown = (e) => {
     setPressed(true);
+    rippleActiveRef.current = true;
     triggerExactRipple(e.nativeEvent); // fire ripple on press (more reliable on mobile)
+  };
+
+  const resetPressState = () => {
+    setPressed(false);
+    rippleActiveRef.current = false;
   };
 
   const onAnimEnd = () => {
     // Same as: $ripple.on('animationend ...', () => $(this).removeClass('is-active'));
     rippleRef.current?.classList.remove("is-active");
+    if (rippleActiveRef.current) {
+      rippleActiveRef.current = false;
+      onRippleComplete?.();
+    }
   };
 
   return (
@@ -57,7 +69,7 @@ export default function RippleButton({
       disabled={disabled}
       onPointerDown={onPointerDown}
       onPointerUp={() => setPressed(false)}
-      onPointerCancel={() => setPressed(false)}
+      onPointerCancel={resetPressState}
       onPointerLeave={() => setPressed(false)}
       onClick={onClick}
       className={`${base} ${pressed ? "scale-95" : "scale-100"} ${className}`}

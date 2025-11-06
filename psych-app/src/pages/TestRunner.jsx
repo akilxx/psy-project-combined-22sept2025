@@ -26,6 +26,8 @@ export default function TestRunner() {
   const [idx, setIdx] = useState(null);
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
+  const [pendingAnswer, setPendingAnswer] = useState(null);
+  const [isAdvancing, setIsAdvancing] = useState(false);
 
   /* ---------------- initial fetch ---------------- */
   const load = useCallback(async () => {
@@ -63,11 +65,24 @@ export default function TestRunner() {
 
   const autoAdvanceRef = useRef(null);
 
+  const questions = test?.questions ?? [];
+  const totalQuestionCount = questions.length;
+  const firstUnansweredIdx = questions.findIndex(
+    q => !answers[q.question_number],
+  );
+  const liveIdx =
+    firstUnansweredIdx === -1 ? totalQuestionCount : firstUnansweredIdx;
+  const firstQuestionNumber = questions[0]?.question_number;
+  const firstAnswered =
+    typeof firstQuestionNumber === 'number' &&
+    Boolean(answers[firstQuestionNumber]);
+
   const clearAutoAdvance = useCallback(() => {
     if (autoAdvanceRef.current) {
       clearTimeout(autoAdvanceRef.current);
       autoAdvanceRef.current = null;
     }
+    setIsAdvancing(false);
   }, []);
 
   useEffect(() => () => clearAutoAdvance(), [clearAutoAdvance]);
@@ -75,20 +90,49 @@ export default function TestRunner() {
   const scheduleAutoAdvance = useCallback(
     nextIdx => {
       clearAutoAdvance();
+      setIsAdvancing(true);
       autoAdvanceRef.current = setTimeout(() => {
         setIdx(nextIdx);
+        setIsAdvancing(false);
         autoAdvanceRef.current = null;
-      }, 450 /* allow ripple animation (~400ms) to finish */);
+      }, 280 /* short pause so selection is visible before moving on */);
     },
     [clearAutoAdvance],
   );
 
   const handleSeek = useCallback(
     newIdx => {
+      if (pendingAnswer || isAdvancing) return;
       clearAutoAdvance();
       setIdx(newIdx);
     },
-    [clearAutoAdvance],
+    [clearAutoAdvance, pendingAnswer, isAdvancing],
+  );
+
+  const finalizeAnswer = useCallback(
+    async (qNum, ans) => {
+      setPendingAnswer(null);
+      setErr(null);
+
+      const shouldAutoAdvance =
+        idx === liveIdx && liveIdx < totalQuestionCount - 1;
+
+      setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
+
+      if (shouldAutoAdvance) {
+        scheduleAutoAdvance(idx + 1);
+      } else {
+        setIsAdvancing(false);
+      }
+
+      try {
+        const { data } = await submitAnswer(resultId, qNum, ans);
+        setAnswers(prev => ({ ...prev, ...data.answers }));
+      } catch {
+        setErr('Network error — retry by clicking again.');
+      }
+    },
+    [idx, liveIdx, resultId, scheduleAutoAdvance, totalQuestionCount],
   );
 
   /* ---------- completed-test view ---------- */
@@ -136,38 +180,15 @@ export default function TestRunner() {
   }
 
   /* ---------- live test logic ---------- */
-  const firstUnansweredIdx = test.questions.findIndex(
-    q => !answers[q.question_number],
-  );
-  const liveIdx =
-    firstUnansweredIdx === -1 ? test.questions.length : firstUnansweredIdx;
-  const firstAnswered = Boolean(answers[test.questions[0].question_number]);
-
-  const handleAnswer = async (qNum, ans) => {
-    const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
-
-    setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
-
-    if (shouldAutoAdvance) {
-      scheduleAutoAdvance(idx + 1);
-    }
-
-    try {
-      const { data } = await submitAnswer(resultId, qNum, ans);
-      setAnswers(prev => ({ ...prev, ...data.answers }));
-    } catch {
-      setErr('Network error — retry by clicking again.');
-    }
-  };
 
   /* navigation helpers */
-  const answeredIdxs = test.questions
+  const answeredIdxs = questions
     .map((q, i) => ({ i, answered: !!answers[q.question_number] }))
     .filter(({ answered }) => answered)
     .map(({ i }) => i);
 
   const allowedIdxs =
-    liveIdx < test.questions.length
+    liveIdx < totalQuestionCount
       ? [...answeredIdxs, liveIdx]
       : answeredIdxs;
 
@@ -175,6 +196,7 @@ export default function TestRunner() {
   const canGoNext = allowedIdxs.some(i => i > idx);
 
   const goPrev = () => {
+    if (pendingAnswer || isAdvancing) return;
     clearAutoAdvance();
     if (!canGoPrev) return;
     const prev = [...answeredIdxs].filter(i => i < idx).pop();
@@ -182,6 +204,7 @@ export default function TestRunner() {
   };
 
   const goNext = () => {
+    if (pendingAnswer || isAdvancing) return;
     clearAutoAdvance();
     if (!canGoNext) return;
     const next = [...allowedIdxs].filter(i => i > idx).shift();
@@ -213,10 +236,23 @@ export default function TestRunner() {
   const renderOptions = () =>
     test.options.map(opt => {
       const selected = prevAnswer === opt;
+      const isPending =
+        pendingAnswer?.qNum === q.question_number && pendingAnswer?.ans === opt;
+      const disabled = Boolean(pendingAnswer) && !isPending;
       return (
         <RippleButton
           key={`${q.question_number}-${opt}`}
-          onClick={() => handleAnswer(q.question_number, opt)}
+          disabled={disabled}
+          onClick={() => {
+            if (pendingAnswer) return;
+            setPendingAnswer({ qNum: q.question_number, ans: opt });
+            setIsAdvancing(false);
+          }}
+          onRippleComplete={() => {
+            if (isPending) {
+              finalizeAnswer(q.question_number, opt);
+            }
+          }}
           className={clsx(
             ' relative overflow-hidden py-2 px-4 font-bold rounded-[10px] transition ',
 
@@ -250,7 +286,7 @@ export default function TestRunner() {
               idx={idx}
               maxIdx={liveIdx}
               onSeek={firstAnswered ? handleSeek : () => {}}
-              disabled={!firstAnswered}
+              disabled={!firstAnswered || Boolean(pendingAnswer) || isAdvancing}
             />
           </div>
         </header>
@@ -278,7 +314,7 @@ export default function TestRunner() {
           <div className="relative w-full">
             <button
               onClick={goPrev}
-              disabled={!canGoPrev}
+              disabled={!canGoPrev || Boolean(pendingAnswer) || isAdvancing}
               className={clsx(
                 chevronBtnBase,
                 'hidden sm:inline-flex absolute left-0 top-1/2 -translate-y-1/2'
@@ -309,7 +345,7 @@ export default function TestRunner() {
 
             <button
               onClick={goNext}
-              disabled={!canGoNext}
+              disabled={!canGoNext || Boolean(pendingAnswer) || isAdvancing}
               className={clsx(
                 chevronBtnBase,
                 'hidden sm:inline-flex absolute right-0 top-1/2 -translate-y-1/2'
@@ -342,7 +378,7 @@ export default function TestRunner() {
           >
             <button
               onClick={goPrev}
-              disabled={!canGoPrev}
+              disabled={!canGoPrev || Boolean(pendingAnswer) || isAdvancing}
               className={clsx(chevronBtnBase)}
               aria-label="Previous answered item"
             >
@@ -373,7 +409,7 @@ export default function TestRunner() {
 
             <button
               onClick={goNext}
-              disabled={!canGoNext}
+              disabled={!canGoNext || Boolean(pendingAnswer) || isAdvancing}
               className={clsx(chevronBtnBase)}
               aria-label="Next answered item"
             >

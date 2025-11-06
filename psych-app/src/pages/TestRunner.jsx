@@ -9,10 +9,9 @@
 --------------------------------------------------------------------------- */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import clsx from 'clsx';
 import AnimatedSubmitButton from '../components/AnimatedSubmitButton';
-
+import Chevron from '../components/Chevron';
 import { fetchResult, submitAnswer, markComplete } from '../api/testing';
 import ProgressBar from '../components/ProgressBar';
 import RippleButton from '../components/RippleButton';
@@ -208,7 +207,7 @@ export default function TestRunner() {
 
   /* Reusable chevron button styles */
   const chevronBtnBase =
-    'p-2 rounded-full text-black hover:bg-gray-200 disabled:text-gray-400 ' +
+    'p-2 text-black bg-transparent disabled:text-gray-400 ' +
     'disabled:opacity-40 disabled:cursor-not-allowed';
 
   const renderOptions = () =>
@@ -286,7 +285,16 @@ export default function TestRunner() {
               )}
               aria-label="Previous answered item"
             >
-              <ChevronLeftIcon className="w-10 h-10" strokeWidth={canGoPrev ? 3 : 2} />
+              
+              <Chevron 
+                direction="left" 
+                size={40} 
+                thickness={canGoPrev ? 6 : 4} 
+                color={canGoPrev ? "black" : "#9CA3AF"} 
+                hoverColor={canGoPrev ? "blue" : "#9CA3AF"} 
+                scale={0.6} 
+                hoverScale={0.8} 
+              />
             </button>
 
             <div
@@ -308,7 +316,17 @@ export default function TestRunner() {
               )}
               aria-label="Next answered item"
             >
-              <ChevronRightIcon className="w-10 h-10" strokeWidth={canGoNext ? 3 : 2} />
+              
+
+              <Chevron 
+                direction="right" 
+                size={40} 
+                thickness={canGoNext ? 6 : 4} 
+                color={canGoNext ? "black" : "#9CA3AF"} 
+                hoverColor={canGoNext ? "blue" : "#9CA3AF"} 
+                scale={0.6} 
+                hoverScale={0.8} 
+              />
             </button>
           </div>
         </section>
@@ -328,7 +346,15 @@ export default function TestRunner() {
               className={clsx(chevronBtnBase)}
               aria-label="Previous answered item"
             >
-              <ChevronLeftIcon className="w-10 h-10" strokeWidth={canGoPrev ? 3 : 2} />
+              <Chevron 
+                direction="left" 
+                size={40} 
+                thickness={canGoPrev ? 6 : 4} 
+                color={canGoPrev ? "black" : "#9CA3AF"} 
+                hoverColor={canGoPrev ? "blue" : "#9CA3AF"} 
+                scale={0.6} 
+                hoverScale={0.8} 
+              /> 
             </button>
 
             <AnimatedSubmitButton
@@ -351,7 +377,15 @@ export default function TestRunner() {
               className={clsx(chevronBtnBase)}
               aria-label="Next answered item"
             >
-              <ChevronRightIcon className="w-10 h-10" strokeWidth={canGoNext ? 3 : 2} />
+              <Chevron 
+                direction="right" 
+                size={40} 
+                thickness={canGoNext ? 6 : 4} 
+                color={canGoNext ? "black" : "#9CA3AF"} 
+                hoverColor={canGoNext ? "blue" : "#9CA3AF"} 
+                scale={0.6} 
+                hoverScale={0.8} 
+              />
             </button>
           </div>
 

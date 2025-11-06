@@ -1,0 +1,102 @@
+/* psych-app/src/components/chevron.css */
+
+/* Container */
+.arrow-chevron {
+  display: block;
+  width: var(--chev-size, 60px);
+  height: var(--chev-size, 60px);
+  position: relative;
+  overflow: visible; /* avoid clipping tips */
+  border: 1px solid transparent;
+
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* The chevron “V” */
+.arrow-chevron .arrow::after {
+  box-sizing: border-box;
+  content: "";
+  position: absolute;
+
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+
+  border-bottom: var(--chev-thickness, 6px) solid var(--chev-color, black);
+  border-right:  var(--chev-thickness, 6px) solid var(--chev-color, black);
+  border-radius: 1px;
+
+  transform-origin: center center;
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--chev-rotate, -45deg))
+    scaleX(var(--chev-flip, 1))
+    scale(var(--chev-scale, 0.6));
+
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+/* Disable animations & state changes when the button is disabled */
+button:disabled .arrow-chevron .arrow::after {
+  transition: none;
+  /* keep default (unhovered) style */
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--chev-rotate, -45deg))
+    scaleX(var(--chev-flip, 1))
+    scale(var(--chev-scale, 0.6));
+  border-bottom-color: var(--chev-color, black);
+  border-right-color:  var(--chev-color, black);
+}
+
+/* ---------- Desktop (real hover pointer) ---------- */
+@media (hover: hover) and (pointer: fine) {
+  /* hover: enlarge + color (only when enabled) */
+  button:enabled .arrow-chevron:hover .arrow::after {
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--chev-rotate, -45deg))
+      scaleX(var(--chev-flip, 1))
+      scale(var(--chev-hover-scale, 0.8));
+    border-bottom-color: var(--chev-hover-color, blue);
+    border-right-color:  var(--chev-hover-color, blue);
+  }
+  /* click/press: temporarily shrink (only when enabled) */
+  button:enabled .arrow-chevron:active .arrow::after {
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--chev-rotate, -45deg))
+      scaleX(var(--chev-flip, 1))
+      scale(var(--chev-press-scale, 0.55));
+    border-bottom-color: var(--chev-hover-color, blue);
+    border-right-color:  var(--chev-hover-color, blue);
+  }
+}
+
+/* ---------- Phones (coarse pointer, small screens): press enlarges and reverts ---------- */
+@media (hover: none) and (pointer: coarse) and (max-width: 639.98px) {
+  button:enabled .arrow-chevron:active .arrow::after {
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--chev-rotate, -45deg))
+      scaleX(var(--chev-flip, 1))
+      scale(var(--chev-hover-scale, 0.8));
+    border-bottom-color: var(--chev-hover-color, blue);
+    border-right-color:  var(--chev-hover-color, blue);
+  }
+}
+
+/* ---------- Tablets with coarse pointer (≥640px): click shrink like desktop ---------- */
+@media (hover: none) and (pointer: coarse) and (min-width: 640px) {
+  button:enabled .arrow-chevron:active .arrow::after {
+    transform:
+      translate(-50%, -50%)
+      rotate(var(--chev-rotate, -45deg))
+      scaleX(var(--chev-flip, 1))
+      scale(var(--chev-press-scale, 0.55));
+    border-bottom-color: var(--chev-hover-color, blue);
+    border-right-color:  var(--chev-hover-color, blue);
+  }
+}

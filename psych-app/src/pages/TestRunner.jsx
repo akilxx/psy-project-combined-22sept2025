@@ -360,13 +360,13 @@ export default function TestRunner() {
         </section>
 
         {/* footer — equal gap below answers, aligned to grid */}
-        <footer className="px-5 sm:px-7 pb-6 mt-8 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0">
+        <footer className="px-5 sm:px-7 pb-6 mt-12 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0 flex flex-col flex-1 sm:flex-none">
           {/* Mobile: submit + progress below */}
           <div
             className={clsx(
               contentMaxWCls,
               mobileSidePadCls,
-              'flex flex-col items-center gap-8 sm:hidden'
+              'sm:hidden flex w-full flex-1 flex-col items-center'
             )}
           >
             <div className="w-full">
@@ -380,21 +380,23 @@ export default function TestRunner() {
               />
             </div>
 
-            <AnimatedSubmitButton
-              onClick={(e) => {
-                if (!allAnswered) {
-                  e.preventDefault();
-                  return;
-                }
-                handleSubmit();
-              }}
-              className={clsx(
-                'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
-                !allAnswered && 'is-disabled',
-                allAnswered && 'enabled'
-              )}
-              labels={['Submit', 'Submitting']}
-            />
+            <div className="pt-8 mt-auto self-center">
+              <AnimatedSubmitButton
+                onClick={(e) => {
+                  if (!allAnswered) {
+                    e.preventDefault();
+                    return;
+                  }
+                  handleSubmit();
+                }}
+                className={clsx(
+                  'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
+                  !allAnswered && 'is-disabled',
+                  allAnswered && 'enabled'
+                )}
+                labels={['Submit', 'Submitting']}
+              />
+            </div>
           </div>
 
 

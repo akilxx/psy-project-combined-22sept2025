@@ -357,29 +357,11 @@ export default function TestRunner() {
             </button>
           </div>
 
-          {/* Mobile progress between grid and submit */}
-          <div
-            className={clsx(
-              contentMaxWCls,
-              mobileSidePadCls,
-              'sm:hidden mt-8'
-            )}
-          >
-            <ProgressBarMobile
-              current={Object.keys(answers).length}
-              total={test.total_questions_number}
-              idx={idx}
-              maxIdx={liveIdx}
-              onSeek={firstAnswered ? handleSeek : () => {}}
-              disabled={!firstAnswered}
-            />
-          </div>
-
         </section>
 
         {/* footer — equal gap below answers, aligned to grid */}
         <footer className="px-5 sm:px-7 pb-6 mt-12 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0 flex flex-col flex-1 sm:flex-none">
-          {/* Mobile: submit button */}
+          {/* Mobile: submit + progress below */}
           <div
             className={clsx(
               contentMaxWCls,
@@ -387,6 +369,17 @@ export default function TestRunner() {
               'sm:hidden flex w-full flex-1 flex-col items-center'
             )}
           >
+            <div className="w-full">
+              <ProgressBarMobile
+                current={Object.keys(answers).length}
+                total={test.total_questions_number}
+                idx={idx}
+                maxIdx={liveIdx}
+                onSeek={firstAnswered ? handleSeek : () => {}}
+                disabled={!firstAnswered}
+              />
+            </div>
+
             <div className="pt-8 mt-auto self-center">
               <AnimatedSubmitButton
                 onClick={(e) => {

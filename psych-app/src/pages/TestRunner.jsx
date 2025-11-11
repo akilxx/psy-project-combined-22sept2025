@@ -264,7 +264,7 @@ export default function TestRunner() {
         </header>
 
         {/* body */}
-        <section className="px-5 sm:px-7 pt-10 pb-0 flex-1">
+        <section className="px-5 sm:px-7 pt-10 pb-0">
 
           {error && (
             <p className="text-red-600 text-center mb-4">
@@ -360,16 +360,16 @@ export default function TestRunner() {
         </section>
 
         {/* footer — equal gap below answers, aligned to grid */}
-        <footer className="px-5 sm:px-7 pb-6 mt-12 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0 flex flex-col flex-1 sm:flex-none">
+        <footer className="px-5 sm:px-7 pb-6 mt-8 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0">
           {/* Mobile: submit + progress below */}
           <div
             className={clsx(
               contentMaxWCls,
               mobileSidePadCls,
-              'sm:hidden flex flex-1 flex-col justify-between gap-8'
+              'flex flex-col items-center gap-8 sm:hidden'
             )}
           >
-            <div className="w-full flex-shrink-0">
+            <div className="w-full">
               <ProgressBarMobile
                 current={Object.keys(answers).length}
                 total={test.total_questions_number}
@@ -380,23 +380,21 @@ export default function TestRunner() {
               />
             </div>
 
-            <div className="w-full mt-auto flex-shrink-0 pb-2">
-              <AnimatedSubmitButton
-                onClick={(e) => {
-                  if (!allAnswered) {
-                    e.preventDefault();
-                    return;
-                  }
-                  handleSubmit();
-                }}
-                className={clsx(
-                  'tw-pad w-full rounded-[10px] border border-[#43B384] text-sm font-bold',
-                  !allAnswered && 'is-disabled',
-                  allAnswered && 'enabled'
-                )}
-                labels={['Submit', 'Submitting']}
-              />
-            </div>
+            <AnimatedSubmitButton
+              onClick={(e) => {
+                if (!allAnswered) {
+                  e.preventDefault();
+                  return;
+                }
+                handleSubmit();
+              }}
+              className={clsx(
+                'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
+                !allAnswered && 'is-disabled',
+                allAnswered && 'enabled'
+              )}
+              labels={['Submit', 'Submitting']}
+            />
           </div>
 
 

@@ -369,7 +369,7 @@ export default function TestRunner() {
               'sm:hidden flex w-full flex-1 flex-col items-center'
             )}
           >
-            <div className="w-full">
+            <div className="w-full mt-8 mb-6 sm:mt-0 sm:mb-0">
               <ProgressBarMobile
                 current={Object.keys(answers).length}
                 total={test.total_questions_number}
@@ -380,7 +380,7 @@ export default function TestRunner() {
               />
             </div>
 
-            <div className="pt-8 mt-auto self-center">
+            <div className="pt-8 mt-6 self-center">
               <AnimatedSubmitButton
                 onClick={(e) => {
                   if (!allAnswered) {

@@ -360,15 +360,26 @@ export default function TestRunner() {
         </section>
 
         {/* footer — equal gap below answers, aligned to grid */}
-        <footer className="px-5 sm:px-7 pb-6 mt-16 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0">
+        <footer className="px-5 sm:px-7 pb-6 mt-8 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0">
           {/* Mobile: submit + progress below */}
           <div
             className={clsx(
               contentMaxWCls,
               mobileSidePadCls,
-              'flex flex-col items-center gap-4 sm:hidden'
+              'flex flex-col items-center gap-8 sm:hidden'
             )}
           >
+            <div className="w-full">
+              <ProgressBarMobile
+                current={Object.keys(answers).length}
+                total={test.total_questions_number}
+                idx={idx}
+                maxIdx={liveIdx}
+                onSeek={firstAnswered ? handleSeek : () => {}}
+                disabled={!firstAnswered}
+              />
+            </div>
+
             <AnimatedSubmitButton
               onClick={(e) => {
                 if (!allAnswered) {
@@ -384,17 +395,6 @@ export default function TestRunner() {
               )}
               labels={['Submit', 'Submitting']}
             />
-
-            <div className="w-full">
-              <ProgressBarMobile
-                current={Object.keys(answers).length}
-                total={test.total_questions_number}
-                idx={idx}
-                maxIdx={liveIdx}
-                onSeek={firstAnswered ? handleSeek : () => {}}
-                disabled={!firstAnswered}
-              />
-            </div>
           </div>
 
 

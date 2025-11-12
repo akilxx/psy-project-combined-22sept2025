@@ -1,7 +1,6 @@
 # testing/views.py
 
 import logging
-import time
 import uuid
 
 from drf_spectacular.types import OpenApiTypes
@@ -11,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
-from django.db import connection, OperationalError, transaction
+from django.db import transaction
 
 from .serializers import (
     TestResultSerializer,
@@ -220,50 +219,20 @@ class TestResultViewSet(viewsets.ViewSet):
 
         # Reload the latest answers and merge the new response within a transaction to
         # avoid overwriting concurrent submissions.
-        max_attempts = 5
-        backoff = 0.05
-        locked_test_result = None
-        updated_answers = None
-
-        for attempt in range(1, max_attempts + 1):
-            try:
-                with transaction.atomic():
-                    queryset = (
-                        TestResult.objects.select_for_update()
-                        if connection.features.supports_select_for_update
-                        else TestResult.objects
-                    )
-                    locked_test_result = queryset.get(pk=test_result.pk)
-                    locked_test_result.refresh_from_db(fields=['answers'])
-                    updated_answers = dict(locked_test_result.answers or {})
-                    updated_answers[str(question_number)] = {
-                        'question number': question_number,
-                        'scale': question['scale'],
-                        'trait': question['trait'],
-                        'dimension': question['dimension'],
-                        'text': question['text'],
-                        'answer': answer_text
-                    }
-                    locked_test_result.answers = updated_answers
-                    locked_test_result.save(update_fields=['answers'])
-                break
-            except OperationalError as exc:
-                is_sqlite_locked = (
-                    connection.vendor == 'sqlite'
-                    and 'database is locked' in str(exc).lower()
-                )
-                if is_sqlite_locked and attempt < max_attempts:
-                    time.sleep(backoff)
-                    backoff *= 2
-                    continue
-                raise
-
-        if locked_test_result is None or updated_answers is None:
-            # Should never happen, but guard against unexpected failures
-            return Response(
-                {'detail': 'Unable to submit answer at this time.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
+        with transaction.atomic():
+            locked_test_result = TestResult.objects.select_for_update().get(pk=test_result.pk)
+            locked_test_result.refresh_from_db(fields=['answers'])
+            updated_answers = dict(locked_test_result.answers or {})
+            updated_answers[str(question_number)] = {
+                'question number': question_number,
+                'scale': question['scale'],
+                'trait': question['trait'],
+                'dimension': question['dimension'],
+                'text': question['text'],
+                'answer': answer_text
+            }
+            locked_test_result.answers = updated_answers
+            locked_test_result.save(update_fields=['answers'])
 
         progress = f"{len(updated_answers)} / {locked_test_result.test.total_questions_number}"
         return Response({

@@ -10,7 +10,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
-from django.db import transaction
 
 from .serializers import (
     TestResultSerializer,
@@ -217,29 +216,22 @@ class TestResultViewSet(viewsets.ViewSet):
         if not question:
             return Response({'detail': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Reload the latest answers and merge the new response within a transaction to
-        # avoid overwriting concurrent submissions.
-        with transaction.atomic():
-            locked_test_result = TestResult.objects.select_for_update().get(pk=test_result.pk)
-            locked_test_result.refresh_from_db(fields=['answers'])
-            updated_answers = dict(locked_test_result.answers or {})
-            updated_answers[str(question_number)] = {
-                'question number': question_number,
-                'scale': question['scale'],
-                'trait': question['trait'],
-                'dimension': question['dimension'],
-                'text': question['text'],
-                'answer': answer_text
-            }
-            locked_test_result.answers = updated_answers
-            locked_test_result.save(update_fields=['answers'])
-
-        progress = f"{len(updated_answers)} / {locked_test_result.test.total_questions_number}"
+        # Update the answers dictionary including the "dimension" field.
+        test_result.answers[str(question_number)] = {
+            'question number': question_number,
+            'scale': question['scale'],
+            'trait': question['trait'],
+            'dimension': question['dimension'],
+            'text': question['text'],
+            'answer': answer_text
+        }
+        test_result.save()
+        progress = f"{len(test_result.answers)} / {test_result.test.total_questions_number}"
         return Response({
             'detail': 'Answer submitted.',
-            'completed': locked_test_result.completed,
+            'completed': test_result.completed,
             'progress': progress,
-            'answers': updated_answers
+            'answers': test_result.answers
         }, status=status.HTTP_200_OK)
 
     @extend_schema(

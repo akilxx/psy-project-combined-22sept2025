@@ -12,7 +12,6 @@ from jsonschema import validate as jsonschema_validate, ValidationError as JSONS
 from drf_spectacular.generators import SchemaGenerator
 import json
 import jsonref
-from unittest.mock import patch
 from testing.models import PsychometricTest, TestResult
 
 User = get_user_model()
@@ -213,41 +212,6 @@ class PsychometricTestAPITestCase(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.json()['detail'], 'Test is already marked as completed.')
-
-    def test_overlapping_submissions_preserve_answers(self):
-        response = self.client.post(
-            reverse('testing:test-start'),
-            data={'test': self.test.id},
-            format='json'
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        test_result_id = response.json()['test_result_id']
-
-        first_instance = TestResult.objects.get(uuid=test_result_id)
-        second_instance = TestResult.objects.get(uuid=test_result_id)
-
-        answer_url_template = f"{reverse('testing:test-answer')}?test_result_id={test_result_id}&question_number={{}}"
-
-        with patch('testing.views.TestResultViewSet.get_test_result', side_effect=[first_instance, second_instance]):
-            response_first = self.client.post(
-                answer_url_template.format(1),
-                data={'answer': 'Option A'},
-                format='json'
-            )
-            self.assertEqual(response_first.status_code, status.HTTP_200_OK)
-
-            response_second = self.client.post(
-                answer_url_template.format(2),
-                data={'answer': 'Option B'},
-                format='json'
-            )
-            self.assertEqual(response_second.status_code, status.HTTP_200_OK)
-
-        test_result = TestResult.objects.get(uuid=test_result_id)
-        self.assertIn('1', test_result.answers)
-        self.assertIn('2', test_result.answers)
-        self.assertEqual(test_result.answers['1']['answer'], 'Option A')
-        self.assertEqual(test_result.answers['2']['answer'], 'Option B')
 
     def test_submit_answer_invalid_question_number(self):
         # Start a new test

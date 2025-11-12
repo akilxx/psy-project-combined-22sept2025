@@ -14,6 +14,7 @@ import json
 import jsonref
 from unittest.mock import patch
 from testing.models import PsychometricTest, TestResult
+from django.db import OperationalError, connection
 
 User = get_user_model()
 
@@ -151,6 +152,47 @@ class PsychometricTestAPITestCase(TestCase):
         self.assertTrue(test_result.completed)
         self.assertIsNotNone(test_result.scores)
         self.assertIsNotNone(test_result.percentiles)
+
+    def test_overlapping_submissions_retry_on_sqlite(self):
+        # Ensure the regression only runs when using SQLite, which may raise locked errors
+        self.assertEqual(connection.vendor, 'sqlite')
+
+        # Start a new test
+        response = self.client.post(
+            reverse('testing:test-start'),
+            data={'test': self.test.id},
+            format='json'
+        )
+        test_result_id = response.json()['test_result_id']
+
+        original_save = TestResult.save
+        save_state = {'called': False}
+
+        def flaky_save(instance, *args, **kwargs):
+            if not save_state['called']:
+                save_state['called'] = True
+                raise OperationalError('database is locked')
+            return original_save(instance, *args, **kwargs)
+
+        with patch.object(TestResult, 'save', side_effect=flaky_save):
+            response_one = self.client.post(
+                f"{reverse('testing:test-answer')}?test_result_id={test_result_id}&question_number=1",
+                data={'answer': 'Option A'},
+                format='json'
+            )
+
+        response_two = self.client.post(
+            f"{reverse('testing:test-answer')}?test_result_id={test_result_id}&question_number=2",
+            data={'answer': 'Option B'},
+            format='json'
+        )
+
+        self.assertEqual(response_one.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_two.status_code, status.HTTP_200_OK)
+
+        stored_result = TestResult.objects.get(uuid=test_result_id)
+        self.assertEqual(stored_result.answers['1']['answer'], 'Option A')
+        self.assertEqual(stored_result.answers['2']['answer'], 'Option B')
 
     def test_update_answer_after_completion(self):
         # Start a new test

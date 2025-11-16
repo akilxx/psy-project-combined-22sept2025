@@ -7,7 +7,7 @@
     • ProgressBar, question text, options grid, and Submit share identical width
     • Submit centered; aligned to answer grid width
 --------------------------------------------------------------------------- */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import AnimatedSubmitButton from '../components/AnimatedSubmitButton';
@@ -27,7 +27,6 @@ export default function TestRunner() {
   const [idx, setIdx] = useState(null);
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
-  const requestTokensRef = useRef({});
 
   /* ---------------- initial fetch ---------------- */
   const load = useCallback(async () => {
@@ -129,16 +128,9 @@ export default function TestRunner() {
     // RippleButton gates onClick until ripple ends; advance immediately here.
     if (shouldAutoAdvance) setIdx(idx + 1);
 
-    const token = (requestTokensRef.current[qNum] || 0) + 1;
-    requestTokensRef.current[qNum] = token;
-
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
-      if (requestTokensRef.current[qNum] !== token) return;
-
-      const updatedAnswer = data?.answers?.[qNum];
-      if (!updatedAnswer) return;
-      setAnswers(prev => ({ ...prev, [qNum]: updatedAnswer }));
+      setAnswers(prev => ({ ...prev, ...data.answers }));
     } catch {
       setErr('Network error — retry by clicking again.');
     }

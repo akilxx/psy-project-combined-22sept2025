@@ -10,6 +10,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticatedOrReadOnly
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth import get_user_model
+from django.db import transaction, connection
+from django.db.models import F, Func, JSONField, Value
+from django.db.models.functions import Coalesce
 
 from .serializers import (
     TestResultSerializer,
@@ -23,6 +26,40 @@ from .serializers import (
     ErrorResponseSerializer,
 )
 from .models import TestResult
+
+
+class JSONSetAnswer(Func):
+    """Database-agnostic helper to upsert a single key in a JSON column."""
+
+    def __init__(self, expression, question_number, payload, **extra):
+        key = str(question_number)
+        json_value = Value(payload, output_field=JSONField())
+        vendor = connection.vendor
+
+        if vendor == 'postgresql':
+            path = Value(f'{{{key}}}')
+            expressions = (
+                Coalesce(expression, Value({}, output_field=JSONField())),
+                path,
+                json_value,
+                Value(True),
+            )
+            extra.setdefault('function', 'jsonb_set')
+        elif vendor == 'sqlite':
+            path = Value(f'$."{key}"')
+            expressions = (
+                Coalesce(expression, Value({}, output_field=JSONField())),
+                path,
+                json_value,
+            )
+            extra.setdefault('function', 'json_set')
+        else:
+            raise NotImplementedError(
+                f"Unsupported database vendor '{vendor}' for JSON answer updates."
+            )
+
+        extra.setdefault('output_field', JSONField())
+        super().__init__(*expressions, **extra)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -216,8 +253,7 @@ class TestResultViewSet(viewsets.ViewSet):
         if not question:
             return Response({'detail': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update the answers dictionary including the "dimension" field.
-        test_result.answers[str(question_number)] = {
+        answer_payload = {
             'question number': question_number,
             'scale': question['scale'],
             'trait': question['trait'],
@@ -225,13 +261,20 @@ class TestResultViewSet(viewsets.ViewSet):
             'text': question['text'],
             'answer': answer_text
         }
-        test_result.save()
-        progress = f"{len(test_result.answers)} / {test_result.test.total_questions_number}"
+
+        with transaction.atomic():
+            locked_result = TestResult.objects.select_for_update().get(pk=test_result.pk)
+            TestResult.objects.filter(pk=locked_result.pk).update(
+                answers=JSONSetAnswer(F('answers'), question_number, answer_payload)
+            )
+            locked_result.refresh_from_db(fields=['answers'])
+
+        progress = f"{len(locked_result.answers)} / {test_result.test.total_questions_number}"
         return Response({
             'detail': 'Answer submitted.',
-            'completed': test_result.completed,
+            'completed': locked_result.completed,
             'progress': progress,
-            'answers': test_result.answers
+            'answers': locked_result.answers
         }, status=status.HTTP_200_OK)
 
     @extend_schema(

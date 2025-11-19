@@ -156,6 +156,8 @@ class TestResult(models.Model):
     #   },
     #   ...
     # ]
+    answers = models.JSONField(default=dict)  # Dictionary of answers keyed by question number
+
     def __str__(self):
         user_id = self.user.email if self.user else 'Anonymous'
         return f"TestResult(id={self.uuid}, user_id={user_id}, test={self.test.test_name}, Date={self.created_at})"
@@ -173,20 +175,13 @@ class TestResult(models.Model):
         super(TestResult, self).save(*args, **kwargs)
 
     def get_unanswered_questions(self):
-        if not self.pk:
-            answered_question_numbers = set()
-        else:
-            answered_question_numbers = set(
-                self.answers.values_list('question_number', flat=True)
-            )
+        answered_question_numbers = set(map(int, self.answers.keys()))
         all_question_numbers = set(q['question number'] for q in self.test.questions)
         unanswered_numbers = all_question_numbers - answered_question_numbers
         return [q for q in self.test.questions if q['question number'] in unanswered_numbers]
 
     def is_completed(self):
-        if not self.pk:
-            return False
-        return self.answers.count() == self.test.total_questions_number
+        return len(self.answers) == self.test.total_questions_number
 
     def compute_scores(self):
         """
@@ -207,15 +202,11 @@ class TestResult(models.Model):
                 'total_score': 0
             }
 
-        if not self.pk:
-            self.scores = []
-            return
-
-        for answer in self.answers.all():
-            answer_text = answer.selected_option
-            scale_type = answer.question_scale
-            trait = answer.question_trait
-            dimension = answer.question_dimension
+        for answer_data in self.answers.values():
+            answer_text = answer_data.get('answer')
+            scale_type = answer_data.get('scale')
+            trait = answer_data.get('trait')
+            dimension = answer_data.get('dimension')
             if not (answer_text and scale_type and trait and dimension):
                 continue
 
@@ -253,24 +244,17 @@ class TestResult(models.Model):
             self.percentiles = []
             return
 
-        def _coerce(value):
-            if value is None:
-                return 0
-            return int(round(value))
-
         percentiles = []
         for trait_data in self.scores:
             # dimensions
             dim_percentiles = {
-                dim: _coerce(compute_percentile(dim, score))
+                dim: compute_percentile(dim, score)
                 for dim, score in trait_data["dimension_scores"].items()
             }
 
             # total for the trait
-            total_percentile = _coerce(
-                compute_percentile(
-                    trait_data["trait"], trait_data["total_score"]
-                )
+            total_percentile = compute_percentile(
+                trait_data["trait"], trait_data["total_score"]
             )
 
             percentiles.append({
@@ -280,62 +264,3 @@ class TestResult(models.Model):
             })
 
         self.percentiles = percentiles
-
-    def answers_as_dict(self):
-        if not self.pk:
-            return {}
-        answers = {}
-        for answer in self.answers.all():
-            answers[str(answer.question_number)] = answer.as_dict()
-        return answers
-
-
-class TestAnswer(models.Model):
-    test_result = models.ForeignKey(
-        TestResult,
-        related_name="answers",
-        on_delete=models.CASCADE,
-    )
-    question_number = models.PositiveIntegerField()
-    question_scale = models.CharField(max_length=255)
-    question_trait = models.CharField(max_length=255)
-    question_dimension = models.CharField(max_length=255)
-    question_text = models.TextField()
-    selected_option = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["test_result", "question_number"],
-                name="unique_test_answer",
-            )
-        ]
-        indexes = [
-            models.Index(fields=["test_result", "question_number"])
-        ]
-
-    def __str__(self):
-        return (
-            f"TestAnswer(test_result={self.test_result_id}, "
-            f"question={self.question_number})"
-        )
-
-    def as_dict(self):
-        return {
-            'question_number': self.question_number,
-            'scale': self.question_scale,
-            'trait': self.question_trait,
-            'dimension': self.question_dimension,
-            'text': self.question_text,
-            'answer': self.selected_option,
-        }
-
-
-__all__ = [
-    'lowercase_keys',
-    'PsychometricTest',
-    'TestResult',
-    'TestAnswer',
-]

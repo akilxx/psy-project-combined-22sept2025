@@ -129,7 +129,19 @@ class TestResultDetailSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.DictField(child=IndividualAnswerSerializer()))
     def get_answers(self, obj):
-        return obj.answers_as_dict()
+        answers = obj.answers  # Original data stored in JSONField
+        formatted_answers = {}
+        for key, value in answers.items():
+            formatted_answer = {
+                'question_number': value.get('question number'),
+                'scale': value.get('scale'),
+                'trait': value.get('trait'),
+                'dimension': value.get('dimension'),
+                'text': value.get('text'),
+                'answer': value.get('answer'),
+            }
+            formatted_answers[key] = formatted_answer
+        return formatted_answers
 
     @extend_schema_field(ScoreSerializer(many=True))
     def get_scores(self, obj):

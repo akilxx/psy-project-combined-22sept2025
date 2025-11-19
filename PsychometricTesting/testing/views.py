@@ -227,13 +227,13 @@ class TestResultViewSet(viewsets.ViewSet):
             }
         )
         test_result.save()
-        answer_count = test_result.answered_count
+        answer_count = test_result.answers.count()
         progress = f"{answer_count} / {test_result.test.total_questions_number}"
         return Response({
             'detail': 'Answer submitted.',
             'completed': test_result.completed,
             'progress': progress,
-            'answers': test_result.answers_dict
+            'answers': test_result.answers_as_dict()
         }, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -276,7 +276,7 @@ class TestResultViewSet(viewsets.ViewSet):
         if test_result.completed:
             return Response({'detail': 'Test is already marked as completed.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if test_result.answered_count == test_result.test.total_questions_number:
+        if test_result.answers.count() == test_result.test.total_questions_number:
             test_result.completed = True
             test_result.save()
             return Response({'detail': 'Test marked as completed.'}, status=status.HTTP_200_OK)

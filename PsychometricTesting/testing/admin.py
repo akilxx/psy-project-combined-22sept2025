@@ -3,7 +3,7 @@
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.contrib import messages
-from .models import PsychometricTest, TestResult, TestAnswer, lowercase_keys
+from .models import PsychometricTest, TestResult, lowercase_keys
 
 
 class PsychometricTestAdmin(admin.ModelAdmin):
@@ -102,6 +102,7 @@ class TestResultReadOnlyAdmin(admin.ModelAdmin):
     list_display = ('user', 'test', 'attempt_number', 'created_at')
     readonly_fields = ('user', 'test', 'attempt_number', 'scores', 'percentiles', 'created_at')
     fields = ('user', 'test', 'attempt_number', 'scores', 'percentiles', 'created_at')
+    exclude = ('answers',)
 
     def has_add_permission(self, request):
         return False
@@ -116,27 +117,5 @@ class TestResultReadOnlyAdmin(admin.ModelAdmin):
         return super().get_queryset(request).select_related('user', 'test')
 
 
-class TestAnswerAdmin(admin.ModelAdmin):
-    list_display = (
-        'test_result', 'question_number', 'selected_option',
-        'question_trait', 'question_dimension'
-    )
-    readonly_fields = (
-        'test_result', 'question_number', 'question_scale',
-        'question_trait', 'question_dimension', 'question_text',
-        'selected_option', 'created_at', 'updated_at'
-    )
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
 admin.site.register(PsychometricTest, PsychometricTestAdmin)
 admin.site.register(TestResult, TestResultReadOnlyAdmin)
-admin.site.register(TestAnswer, TestAnswerAdmin)

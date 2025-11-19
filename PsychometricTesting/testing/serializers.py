@@ -129,7 +129,7 @@ class TestResultDetailSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.DictField(child=IndividualAnswerSerializer()))
     def get_answers(self, obj):
-        return obj.answers_as_dict()
+        return obj.answers_dict
 
     @extend_schema_field(ScoreSerializer(many=True))
     def get_scores(self, obj):

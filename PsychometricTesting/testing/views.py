@@ -216,22 +216,24 @@ class TestResultViewSet(viewsets.ViewSet):
         if not question:
             return Response({'detail': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Update the answers dictionary including the "dimension" field.
-        test_result.answers[str(question_number)] = {
-            'question number': question_number,
-            'scale': question['scale'],
-            'trait': question['trait'],
-            'dimension': question['dimension'],
-            'text': question['text'],
-            'answer': answer_text
-        }
+        test_result.answers.update_or_create(
+            question_number=question_number,
+            defaults={
+                'question_scale': question['scale'],
+                'question_trait': question['trait'],
+                'question_dimension': question['dimension'],
+                'question_text': question['text'],
+                'selected_option': answer_text,
+            }
+        )
         test_result.save()
-        progress = f"{len(test_result.answers)} / {test_result.test.total_questions_number}"
+        answer_count = test_result.answers.count()
+        progress = f"{answer_count} / {test_result.test.total_questions_number}"
         return Response({
             'detail': 'Answer submitted.',
             'completed': test_result.completed,
             'progress': progress,
-            'answers': test_result.answers
+            'answers': test_result.answers_as_dict()
         }, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -274,7 +276,7 @@ class TestResultViewSet(viewsets.ViewSet):
         if test_result.completed:
             return Response({'detail': 'Test is already marked as completed.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if len(test_result.answers) == test_result.test.total_questions_number:
+        if test_result.answers.count() == test_result.test.total_questions_number:
             test_result.completed = True
             test_result.save()
             return Response({'detail': 'Test marked as completed.'}, status=status.HTTP_200_OK)

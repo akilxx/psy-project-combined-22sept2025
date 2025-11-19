@@ -602,7 +602,8 @@ class PsychometricTestAPITestCase(TestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         test_result = TestResult.objects.get(uuid=test_result_id)
-        self.assertNotIn('extra_field', test_result.answers['1'])
+        answer = test_result.answers.get(question_number=1)
+        self.assertEqual(answer.selected_option, 'Option A')
 
     def test_session_persistence(self):
         # Start a new test as anonymous user

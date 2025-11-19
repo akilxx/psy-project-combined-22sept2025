@@ -183,10 +183,16 @@ class TestResult(models.Model):
         unanswered_numbers = all_question_numbers - answered_question_numbers
         return [q for q in self.test.questions if q['question number'] in unanswered_numbers]
 
+    def _get_prefetched_answers(self):
+        cache = getattr(self, '_prefetched_objects_cache', None)
+        if cache is None:
+            return None
+        return cache.get('answers')
+
     def is_completed(self):
         if not self.pk:
             return False
-        return self.answers.count() == self.test.total_questions_number
+        return self.answered_count == self.test.total_questions_number
 
     def compute_scores(self):
         """
@@ -281,13 +287,33 @@ class TestResult(models.Model):
 
         self.percentiles = percentiles
 
-    def answers_as_dict(self):
+    @property
+    def answers_dict(self):
         if not self.pk:
             return {}
+
+        answers_iterable = self._get_prefetched_answers()
+        if answers_iterable is None:
+            answers_iterable = self.answers.all()
+
         answers = {}
-        for answer in self.answers.all():
+        for answer in answers_iterable:
             answers[str(answer.question_number)] = answer.as_dict()
         return answers
+
+    @property
+    def answered_count(self):
+        if not self.pk:
+            return 0
+
+        answers_iterable = self._get_prefetched_answers()
+        if answers_iterable is not None:
+            return len(answers_iterable)
+
+        return self.answers.count()
+
+    def answers_as_dict(self):
+        return self.answers_dict
 
 
 class TestAnswer(models.Model):

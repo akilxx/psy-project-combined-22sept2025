@@ -164,8 +164,16 @@ class TestResult(models.Model):
         raise ProtectedError("Deletion of TestResult instances is not allowed.", self)
 
     def save(self, *args, **kwargs):
-        if self.is_completed():
-            self.compute_scores()
+        answers = None
+        if self.pk:
+            prefetched = self._get_prefetched_answers()
+            if prefetched is not None:
+                answers = list(prefetched)
+            else:
+                answers = list(self.answers.all())
+
+        if self.is_completed(answers=answers):
+            self.compute_scores(answers=answers)
             self.compute_percentiles()
 
         if self.completed:
@@ -189,12 +197,16 @@ class TestResult(models.Model):
             return None
         return cache.get('answers')
 
-    def is_completed(self):
+    def is_completed(self, answers=None):
         if not self.pk:
             return False
+
+        if answers is not None:
+            return len(answers) == self.test.total_questions_number
+
         return self.answered_count == self.test.total_questions_number
 
-    def compute_scores(self):
+    def compute_scores(self, answers=None):
         """
         Compute scores per trait and per dimension.
         Each answer's score is determined by the test options and scale (positive/negative).
@@ -217,7 +229,14 @@ class TestResult(models.Model):
             self.scores = []
             return
 
-        for answer in self.answers.all():
+        if answers is None:
+            answers_iterable = self._get_prefetched_answers()
+            if answers_iterable is None:
+                answers_iterable = self.answers.all()
+        else:
+            answers_iterable = answers
+
+        for answer in answers_iterable:
             answer_text = answer.selected_option
             scale_type = answer.question_scale
             trait = answer.question_trait

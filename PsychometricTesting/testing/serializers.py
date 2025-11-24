@@ -129,18 +129,32 @@ class TestResultDetailSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.DictField(child=IndividualAnswerSerializer()))
     def get_answers(self, obj):
-        answers = obj.answers  # Original data stored in JSONField
+        """
+        Build the answers mapping from normalized TestAnswer rows.
+
+        Shape:
+        {
+          "1": {
+            "question_number": 1,
+            "scale": "...",
+            "trait": "...",
+            "dimension": "...",
+            "text": "...",
+            "answer": "..."
+          },
+          ...
+        }
+        """
         formatted_answers = {}
-        for key, value in answers.items():
-            formatted_answer = {
-                'question_number': value.get('question number'),
-                'scale': value.get('scale'),
-                'trait': value.get('trait'),
-                'dimension': value.get('dimension'),
-                'text': value.get('text'),
-                'answer': value.get('answer'),
+        for answer in obj.test_answers.all().order_by('question_number'):
+            formatted_answers[str(answer.question_number)] = {
+                'question_number': answer.question_number,
+                'scale': answer.scale,
+                'trait': answer.trait,
+                'dimension': answer.dimension,
+                'text': answer.text,
+                'answer': answer.answer,
             }
-            formatted_answers[key] = formatted_answer
         return formatted_answers
 
     @extend_schema_field(ScoreSerializer(many=True))
@@ -161,9 +175,23 @@ class AnswerSubmissionResponseSerializer(serializers.Serializer):
     """
     Serializer for the response returned after submitting or updating an answer.
     """
-    detail = serializers.CharField(help_text="A message indicating that the answer was submitted.")
-    completed = serializers.BooleanField(help_text="Indicates whether the test has been completed.")
-    progress = serializers.CharField(help_text="A string representing the user's progress through the test (e.g., '3 / 10').")
+    detail = serializers.CharField(
+        help_text="A message indicating that the answer was submitted."
+    )
+    completed = serializers.BooleanField(
+        help_text="Indicates whether the test has been completed."
+    )
+    progress = serializers.CharField(
+        help_text="A string representing the user's progress through the test (e.g., '3 / 10')."
+    )
+    answers = serializers.DictField(
+        child=IndividualAnswerSerializer(),
+        help_text=(
+            "Mapping of question_number (as string) to the updated answer payload, "
+            "built from TestAnswer rows."
+        ),
+    )
+
 
 class CompletionResponseSerializer(serializers.Serializer):
     """

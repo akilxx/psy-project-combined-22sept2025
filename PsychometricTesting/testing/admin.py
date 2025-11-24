@@ -6,6 +6,7 @@ from django.contrib import messages
 from .models import PsychometricTest, TestResult, lowercase_keys
 
 
+
 class PsychometricTestAdmin(admin.ModelAdmin):
     readonly_fields = ('total_questions_number',)
     fields = ('test_name', 'options', 'questions', 'traits', 'total_questions_number')
@@ -102,7 +103,6 @@ class TestResultReadOnlyAdmin(admin.ModelAdmin):
     list_display = ('user', 'test', 'attempt_number', 'created_at')
     readonly_fields = ('user', 'test', 'attempt_number', 'scores', 'percentiles', 'created_at')
     fields = ('user', 'test', 'attempt_number', 'scores', 'percentiles', 'created_at')
-    exclude = ('answers',)
 
     def has_add_permission(self, request):
         return False

@@ -128,91 +128,95 @@ class PsychometricTest(models.Model):
 
 class TestResult(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    user = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
-    test = models.ForeignKey(PsychometricTest, on_delete=models.PROTECT)
+    user = models.ForeignKey(get_user_model(), on_delete=models.PROTECT, null=True, blank=True)
+    test = models.ForeignKey('PsychometricTest', on_delete=models.PROTECT)
     attempt_number = models.IntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True, editable=False)
     completed = models.BooleanField(default=False)
-    in_progress = models.BooleanField(default=True)  # Indicates if the test is in progress
+    in_progress = models.BooleanField(default=True)
     session_key = models.CharField(max_length=40, null=True, blank=True)
 
+    # No more answers JSONField here – answers are normalized in TestAnswer
     scores = models.JSONField(blank=True, null=True)
-    # Expected structure:
-    # [
-    #   {
-    #     "trait": "neuroticism",
-    #     "dimension_scores": {"anxiety": 12, "anger": 8, "depression": 10},
-    #     "total_score": 30
-    #   },
-    #   ...
-    # ]
     percentiles = models.JSONField(blank=True, null=True)
-    # Expected structure:
-    # [
-    #   {
-    #     "trait": "neuroticism",
-    #     "dimension_percentiles": {"anxiety": 70, "anger": 80, "depression": 65},
-    #     "total_percentile": 75
-    #   },
-    #   ...
-    # ]
-    answers = models.JSONField(default=dict)  # Dictionary of answers keyed by question number
 
     def __str__(self):
         user_id = self.user.email if self.user else 'Anonymous'
-        return f"TestResult(id={self.uuid}, user_id={user_id}, test={self.test.test_name}, Date={self.created_at})"
+        return (
+            f"TestResult(id={self.uuid}, user_id={user_id}, "
+            f"test={self.test.test_name}, Date={self.created_at})"
+        )
 
     def delete(self, *args, **kwargs):
+        """
+        Prevent deletion of TestResult instances.
+        This is the only hard business rule enforced at the model level.
+        """
         raise ProtectedError("Deletion of TestResult instances is not allowed.", self)
 
-    def save(self, *args, **kwargs):
-        if self.is_completed():
-            self.compute_scores()
-            self.compute_percentiles()
+    # ---------- Row-based helpers (no side effects) ----------
 
-        if self.completed:
-            self.in_progress = False
-        super(TestResult, self).save(*args, **kwargs)
+    def get_answer_rows(self):
+        """
+        Convenience helper to fetch all TestAnswer rows for this result.
+        Uses the `test_answers` related_name on TestAnswer.test_result.
+        """
+        return list(self.test_answers.all())
 
     def get_unanswered_questions(self):
-        answered_question_numbers = set(map(int, self.answers.keys()))
-        all_question_numbers = set(q['question number'] for q in self.test.questions)
-        unanswered_numbers = all_question_numbers - answered_question_numbers
-        return [q for q in self.test.questions if q['question number'] in unanswered_numbers]
-
-    def is_completed(self):
-        return len(self.answers) == self.test.total_questions_number
-
-    def compute_scores(self):
         """
-        Compute scores per trait and per dimension.
-        Each answer's score is determined by the test options and scale (positive/negative).
-        This method aggregates scores per dimension and calculates a total score per trait.
+        Return question dicts from self.test.questions that do NOT yet
+        have a corresponding TestAnswer row.
+        """
+        answered_numbers = {a.question_number for a in self.get_answer_rows()}
+        return [
+            q for q in self.test.questions
+            if q['question number'] not in answered_numbers
+        ]
+
+    def _compute_scores_from_rows(self, answer_rows):
+        """
+        Compute scores per trait and per dimension from normalized TestAnswer rows.
+
+        Returns:
+            list of:
+            [
+              {
+                "trait": "<trait-name>",
+                "dimension_scores": {"dim1": <score>, ...},
+                "total_score": <sum of dimensions>,
+              },
+              ...
+            ]
         """
         options = self.test.options
         num_options = len(options)
         positive_scale = {option: idx + 1 for idx, option in enumerate(options)}
         negative_scale = {option: num_options - idx for idx, option in enumerate(options)}
 
+        # Initialise scores structure per trait/dimension
         scores = {}
         for trait in self.test.traits:
             trait_name = trait['name'].lower()
             scores[trait_name] = {
                 'dimension_scores': {d.lower(): 0 for d in trait['dimensions']},
-                'total_score': 0
+                'total_score': 0,
             }
 
-        for answer_data in self.answers.values():
-            answer_text = answer_data.get('answer')
-            scale_type = answer_data.get('scale')
-            trait = answer_data.get('trait')
-            dimension = answer_data.get('dimension')
+        # Aggregate over normalized answers (TestAnswer rows)
+        for answer_obj in answer_rows:
+            answer_text = answer_obj.answer
+            scale_type = answer_obj.scale
+            trait = answer_obj.trait
+            dimension = answer_obj.dimension
+
             if not (answer_text and scale_type and trait and dimension):
                 continue
 
-            if scale_type.lower() == 'positive':
+            scale_type_lower = scale_type.lower()
+            if scale_type_lower == 'positive':
                 score_value = positive_scale.get(answer_text)
-            elif scale_type.lower() == 'negative':
+            elif scale_type_lower == 'negative':
                 score_value = negative_scale.get(answer_text)
             else:
                 continue
@@ -222,37 +226,53 @@ class TestResult(models.Model):
 
             trait_key = trait.lower()
             dimension_key = dimension.lower()
-            if trait_key in scores and dimension_key in scores[trait_key]['dimension_scores']:
-                scores[trait_key]['dimension_scores'][dimension_key] += score_value
+            trait_entry = scores.get(trait_key)
+            if not trait_entry:
+                # Ignore answers for unknown traits
+                continue
+            if dimension_key not in trait_entry['dimension_scores']:
+                # Ignore answers for unknown dimensions
+                continue
 
-        # Calculate total score per trait.
+            trait_entry['dimension_scores'][dimension_key] += score_value
+
+        # Build final list
+        result = []
         for trait_key, data in scores.items():
-            total = sum(data['dimension_scores'].values())
-            data['total_score'] = total
+            data['total_score'] = sum(data['dimension_scores'].values())
+            result.append({
+                'trait': trait_key,
+                'dimension_scores': data['dimension_scores'],
+                'total_score': data['total_score'],
+            })
 
-        self.scores = [
-            {'trait': trait, 'dimension_scores': data['dimension_scores'], 'total_score': data['total_score']}
-            for trait, data in scores.items()
-        ]
+        return result
 
-    def compute_percentiles(self):
+    def _compute_percentiles_from_scores(self, scores):
         """
-        Compute percentile scores for each trait and each dimension
-        using the local percentile app (no external HTTP requests).
+        Compute percentiles per trait and per dimension from the scores structure.
+
+        Returns:
+            list of:
+            [
+              {
+                "trait": "<trait-name>",
+                "dimension_percentiles": {"dim1": <pct>, ...},
+                "total_percentile": <pct>,
+              },
+              ...
+            ]
         """
-        if not self.scores:
-            self.percentiles = []
-            return
+        if not scores:
+            return []
 
         percentiles = []
-        for trait_data in self.scores:
-            # dimensions
+        for trait_data in scores:
             dim_percentiles = {
                 dim: compute_percentile(dim, score)
                 for dim, score in trait_data["dimension_scores"].items()
             }
 
-            # total for the trait
             total_percentile = compute_percentile(
                 trait_data["trait"], trait_data["total_score"]
             )
@@ -263,4 +283,47 @@ class TestResult(models.Model):
                 "total_percentile": total_percentile,
             })
 
-        self.percentiles = percentiles
+        return percentiles
+
+
+class TestAnswer(models.Model):
+    """
+    Normalized answer for a single question in a TestResult.
+    One row per (test_result, question_number).
+    """
+    test_result = models.ForeignKey(
+        'TestResult',
+        on_delete=models.CASCADE,
+        related_name='test_answers',
+    )
+    question_number = models.IntegerField()
+
+    # Denormalized metadata from PsychometricTest.questions at the time of answering
+    scale = models.CharField(max_length=32)
+    trait = models.CharField(max_length=128)
+    dimension = models.CharField(max_length=128)
+    text = models.TextField()
+
+    # The selected option (must be one of test.options at write time)
+    answer = models.CharField(max_length=255)
+
+    created_at = models.DateTimeField(auto_now_add=True, editable=False)
+    updated_at = models.DateTimeField(auto_now=True, editable=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['test_result', 'question_number'],
+                name='uniq_answer_per_result_and_question',
+            )
+        ]
+        indexes = [
+            models.Index(fields=['test_result', 'question_number']),
+        ]
+        ordering = ['question_number']
+
+    def __str__(self):
+        return (
+            f"Answer(test_result={self.test_result.uuid}, "
+            f"q={self.question_number}, answer={self.answer})"
+        )

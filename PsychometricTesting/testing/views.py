@@ -22,7 +22,7 @@ from .serializers import (
     TestResultListSerializer,
     ErrorResponseSerializer,
 )
-from .models import TestResult
+from .models import TestResult, TestAnswer
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -183,56 +183,113 @@ class TestResultViewSet(viewsets.ViewSet):
     def submit_or_update_answer(self, request):
         """
         Submit or update an answer for a specific question in a TestResult.
-        The submitted answer must be one of the valid options defined in the test.
+
+        - Uses TestAnswer rows (normalized).
+        - No backend ordering enforcement (frontend controls flow).
+        - Uses update_or_create for concurrency-safe upserts.
+        - Computes progress from TestAnswer row count.
+        - Recomputes scores/percentiles whenever all questions are answered.
+        - Returns an {question_number: {...}} mapping for frontend compatibility.
         """
+        # 1) Locate TestResult
         test_result = self.get_test_result(request)
         if not test_result:
-            return Response({'detail': 'Test not found or access denied.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Test not found or access denied.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         if test_result.completed:
-            return Response({'detail': 'Cannot submit answers to a completed test.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Cannot submit answers to a completed test.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # 2) Parse question_number
         question_number = request.query_params.get('question_number')
         if not question_number:
-            return Response({'detail': 'question_number is required as a query parameter.'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'question_number is required as a query parameter.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         try:
             question_number = int(question_number)
         except ValueError:
-            return Response({'detail': 'Invalid question_number.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Invalid question_number.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # 3) Validate body (answer)
         serializer = AnswerSubmissionSerializer(
             data=request.data,
-            context={'test_result': test_result, 'question_number': question_number}
+            context={'test_result': test_result, 'question_number': question_number},
         )
         serializer.is_valid(raise_exception=True)
         answer_text = serializer.validated_data['answer']
 
-        # Retrieve the question from the test data using the question number.
+        # 4) Look up question definition from the test
         question = next(
-            (q for q in test_result.test.questions if q['question number'] == question_number),
-            None
+            (q for q in test_result.test.questions
+             if q['question number'] == question_number),
+            None,
         )
         if not question:
-            return Response({'detail': 'Question not found.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Question not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        # Update the answers dictionary including the "dimension" field.
-        test_result.answers[str(question_number)] = {
-            'question number': question_number,
-            'scale': question['scale'],
-            'trait': question['trait'],
-            'dimension': question['dimension'],
-            'text': question['text'],
-            'answer': answer_text
-        }
-        test_result.save()
-        progress = f"{len(test_result.answers)} / {test_result.test.total_questions_number}"
-        return Response({
-            'detail': 'Answer submitted.',
-            'completed': test_result.completed,
-            'progress': progress,
-            'answers': test_result.answers
-        }, status=status.HTTP_200_OK)
+        # 5) UPSERT THE ANSWER ROW (no ordering enforcement)
+        TestAnswer.objects.update_or_create(
+            test_result=test_result,
+            question_number=question_number,
+            defaults={
+                'scale': question['scale'],
+                'trait': question['trait'],
+                'dimension': question['dimension'],
+                'text': question['text'],
+                'answer': answer_text,
+            },
+        )
+
+        # 6) SCORING WHEN STRUCTURALLY COMPLETE
+        answered_count = test_result.test_answers.count()
+        total_questions = test_result.test.total_questions_number
+
+        if answered_count == total_questions:
+            rows = test_result.get_answer_rows()
+            scores = test_result._compute_scores_from_rows(rows)
+            percentiles = test_result._compute_percentiles_from_scores(scores)
+            test_result.scores = scores
+            test_result.percentiles = percentiles
+            test_result.save(update_fields=['scores', 'percentiles'])
+
+        # 7) PROGRESS FROM ROW COUNT
+        progress = f"{answered_count} / {total_questions}"
+
+        # 8) RECONSTRUCT ANSWERS MAPPING FROM ROWS
+        answers_payload = {}
+        for ans in test_result.test_answers.all().order_by('question_number'):
+            key = str(ans.question_number)
+            answers_payload[key] = {
+                'question_number': ans.question_number,
+                'scale': ans.scale,
+                'trait': ans.trait,
+                'dimension': ans.dimension,
+                'text': ans.text,
+                'answer': ans.answer,
+            }
+
+        return Response(
+            {
+                'detail': 'Answer submitted.',
+                'completed': test_result.completed,
+                'progress': progress,
+                'answers': answers_payload,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         request=None,
@@ -254,32 +311,83 @@ class TestResultViewSet(viewsets.ViewSet):
     )
     def set_complete(self, request):
         """
-        Manually mark a TestResult as complete.
+        Manually mark a TestResult as complete using TestAnswer rows.
+
+        Steps:
+        1. Validate test_result_id.
+        2. Get the TestResult.
+        3. Reject if already completed.
+        4. Count TestAnswer rows.
+        5. Check if count == total questions.
+        6. If yes → mark complete, ensure scores & percentiles exist (safety net).
+        7. If not → return clear error about unanswered questions.
         """
+        # 1) Validate test_result_id
         test_result_id = request.query_params.get('test_result_id')
         if not test_result_id:
             return Response(
                 {'detail': 'test_result_id is required as a query parameter.'},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
+
         try:
             uuid.UUID(test_result_id)
         except ValueError:
-            return Response({'detail': 'Invalid test_result_id format.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Invalid test_result_id format.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        # 2) Get the TestResult
         test_result = self.get_test_result(request)
         if not test_result:
-            return Response({'detail': 'Test not found or access denied.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {'detail': 'Test not found or access denied.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
+        # 3) Reject if already completed
         if test_result.completed:
-            return Response({'detail': 'Test is already marked as completed.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'detail': 'Test is already marked as completed.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        if len(test_result.answers) == test_result.test.total_questions_number:
-            test_result.completed = True
-            test_result.save()
-            return Response({'detail': 'Test marked as completed.'}, status=status.HTTP_200_OK)
+        # 4) Count TestAnswer rows
+        answered_count = test_result.test_answers.count()
+        total_questions = test_result.test.total_questions_number
 
-        return Response({'detail': 'Test could not be marked as completed.'}, status=status.HTTP_400_BAD_REQUEST)
+        # 5) Check if count == total questions
+        if answered_count != total_questions:
+            remaining = total_questions - answered_count
+            return Response(
+                {
+                    'detail': (
+                        'Test could not be marked as completed because not all questions '
+                        f'have been answered. {remaining} question(s) remaining.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 6) Mark complete + SAFETY NET scoring
+        test_result.completed = True
+        test_result.in_progress = False
+
+        if test_result.scores is None or test_result.percentiles is None:
+            rows = test_result.get_answer_rows()
+            scores = test_result._compute_scores_from_rows(rows)
+            percentiles = test_result._compute_percentiles_from_scores(scores)
+            test_result.scores = scores
+            test_result.percentiles = percentiles
+
+        test_result.save(update_fields=['completed', 'in_progress', 'scores', 'percentiles'])
+
+        return Response(
+            {'detail': 'Test marked as completed.'},
+            status=status.HTTP_200_OK,
+        )
+
 
     @extend_schema(
         request=None,

@@ -168,10 +168,7 @@ body::-webkit-scrollbar {     /* Chrome / Safari */
 
 
 .button.is-disabled {
-  --background: #EBEBEB;
-  --text: #9CA3AF;      /* tailwind gray-400 */
   cursor: not-allowed;
   pointer-events: none; /* block clicks */
-  border: none;
 }
 

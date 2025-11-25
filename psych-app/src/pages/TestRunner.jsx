@@ -166,6 +166,7 @@ export default function TestRunner() {
 
   /* submit */
   const allAnswered = Object.keys(answers).length === test.total_questions_number;
+  const submitLocked = !allAnswered || submitting;
 
   const handleSubmit = async () => {
     if (!allAnswered || submitting) return;
@@ -407,7 +408,7 @@ export default function TestRunner() {
               <AnimatedSubmitButton
                 key={submitting ? 'submitting-mobile' : 'idle-mobile'}
                 onClick={(e) => {
-                  if (!allAnswered || submitting) {
+                  if (submitLocked) {
                     e.preventDefault();
                     return;
                   }
@@ -415,9 +416,12 @@ export default function TestRunner() {
                 }}
                 className={clsx(
                   'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
-                  (!allAnswered || submitting) && 'is-disabled',
                   allAnswered && !submitting && 'enabled'
                 )}
+                style={{
+                  pointerEvents: submitLocked ? 'none' : undefined,
+                  cursor: submitLocked ? 'not-allowed' : undefined,
+                }}
                 loading={submitting}
                 labels={['Submit', 'Submitting']}
               />
@@ -436,7 +440,7 @@ export default function TestRunner() {
             <AnimatedSubmitButton
               key={submitting ? 'submitting-desktop' : 'idle-desktop'}
               onClick={(e) => {
-                if (!allAnswered || submitting) {
+                if (submitLocked) {
                   e.preventDefault();
                   return;
                 }
@@ -444,9 +448,12 @@ export default function TestRunner() {
               }}
               className={clsx(
                 'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
-                (!allAnswered || submitting) && 'is-disabled',
                 allAnswered && !submitting && 'enabled'
               )}
+              style={{
+                pointerEvents: submitLocked ? 'none' : undefined,
+                cursor: submitLocked ? 'not-allowed' : undefined,
+              }}
               loading={submitting}
               labels={['Submit', 'Submitting']}
             />

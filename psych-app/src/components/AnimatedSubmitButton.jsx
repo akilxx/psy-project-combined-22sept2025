@@ -117,8 +117,8 @@ const css = `
 
 /* keyframes */
 @keyframes text {
-  10%, 85%  { transform: translateY(-100%); }
-  95%, 100% { transform: translateY(-200%); }
+  0% { transform: translateY(0); }
+  10%, 100% { transform: translateY(-100%); }
 }
 @keyframes line {
   5%, 10%   { transform: translateY(-30px); }

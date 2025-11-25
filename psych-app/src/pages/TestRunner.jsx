@@ -23,7 +23,8 @@ export default function TestRunner() {
 
   /* ---------------- state ---------------- */
   const [test, setTest] = useState(null);
-  const [answers, setAnswers] = useState({});
+  const [confirmedAnswers, setConfirmedAnswers] = useState({});
+  const [optimisticAnswers, setOptimisticAnswers] = useState({});
   const [idx, setIdx] = useState(null);
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
@@ -36,7 +37,8 @@ export default function TestRunner() {
     const { data } = await fetchResult(resultId);
 
     setTest(data.test);
-    setAnswers(data.answers);
+    setConfirmedAnswers(data.answers);
+    setOptimisticAnswers(data.answers);
     setInProgress(Boolean(data.in_progress));
 
     const firstUnanswered = data.test.questions.findIndex(
@@ -112,7 +114,7 @@ export default function TestRunner() {
 
   /* ---------- live test logic ---------- */
   const firstUnansweredIdx = test.questions.findIndex(
-    q => !answers[q.question_number],
+    q => !confirmedAnswers[q.question_number],
   );
   const liveIdx =
     firstUnansweredIdx === -1 ? test.questions.length : firstUnansweredIdx;
@@ -120,28 +122,39 @@ export default function TestRunner() {
   // Safe guard (prevents crash if questions array is empty)
   const firstAnswered =
     Array.isArray(test?.questions) && test.questions.length > 0
-      ? Boolean(answers[test.questions[0].question_number])
+      ? Boolean(confirmedAnswers[test.questions[0].question_number])
       : false;
 
   const handleAnswer = async (qNum, ans) => {
     const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
 
-    setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
+    setErr(null);
+    setOptimisticAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
 
     // RippleButton gates onClick until ripple ends; advance immediately here.
     if (shouldAutoAdvance) setIdx(idx + 1);
 
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
-      setAnswers(prev => ({ ...prev, ...data.answers }));
+      setConfirmedAnswers(prev => ({ ...prev, ...data.answers }));
+      setOptimisticAnswers(prev => ({ ...prev, ...data.answers }));
     } catch {
       setErr('Network error — retry by clicking again.');
+      setOptimisticAnswers(prev => {
+        const next = { ...prev };
+        if (confirmedAnswers[qNum]) {
+          next[qNum] = confirmedAnswers[qNum];
+        } else {
+          delete next[qNum];
+        }
+        return next;
+      });
     }
   };
 
   /* navigation helpers */
   const answeredIdxs = test.questions
-    .map((q, i) => ({ i, answered: !!answers[q.question_number] }))
+    .map((q, i) => ({ i, answered: !!confirmedAnswers[q.question_number] }))
     .filter(({ answered }) => answered)
     .map(({ i }) => i);
 
@@ -166,7 +179,8 @@ export default function TestRunner() {
   };
 
   /* submit */
-  const allAnswered = Object.keys(answers).length === test.total_questions_number;
+  const allAnswered =
+    Object.keys(confirmedAnswers).length === test.total_questions_number;
 
   const handleSubmit = async () => {
     if (!allAnswered || submitting) return;
@@ -177,31 +191,31 @@ export default function TestRunner() {
     let attempt = 0;
     const maxDelay = 4000;
 
-    while (attempt < 5) {
-      try {
-        await markComplete(resultId);
-        setSubmitting(false);
-        nav(`/results/${resultId}`);
-        return;
-      } catch (err) {
-        attempt += 1;
-        const delay = Math.min(500 * 2 ** (attempt - 1), maxDelay);
-
-        if (attempt >= 5) {
-          setSubmitError('Unable to submit. Please check your connection and try again.');
+      while (attempt < 5) {
+        try {
+          await markComplete(resultId);
           setSubmitting(false);
-          setSubmitAttempt(prev => prev + 1);
+          nav(`/results/${resultId}`);
           return;
-        }
+        } catch {
+          attempt += 1;
+          const delay = Math.min(500 * 2 ** (attempt - 1), maxDelay);
 
-        await new Promise(res => setTimeout(res, delay));
+          if (attempt >= 5) {
+            setSubmitError('Unable to submit. Please check your connection and try again.');
+            setSubmitting(false);
+            setSubmitAttempt(prev => prev + 1);
+            return;
+          }
+
+          await new Promise(res => setTimeout(res, delay));
+        }
       }
-    }
   };
 
   /* current question */
   const q = test.questions[idx];
-  const prevAnswer = answers[q.question_number]?.answer;
+  const prevAnswer = optimisticAnswers[q.question_number]?.answer;
   /* --- mobile question sizing based on longest question --- */
   const maxQuestionChars = Array.isArray(test.questions)
     ? Math.max(...test.questions.map(item => (item.text || '').length))
@@ -275,7 +289,7 @@ export default function TestRunner() {
             {/* Desktop / tablet */}
             <div className="hidden sm:block">
               <ProgressBar
-                current={Object.keys(answers).length}
+                current={Object.keys(confirmedAnswers).length}
                 total={test.total_questions_number}
                 idx={idx}
                 maxIdx={liveIdx}
@@ -395,7 +409,7 @@ export default function TestRunner() {
           >
             <div className="w-full mt-8 mb-6 sm:mt-0 sm:mb-0">
               <ProgressBarMobile
-                current={Object.keys(answers).length}
+                current={Object.keys(confirmedAnswers).length}
                 total={test.total_questions_number}
                 idx={idx}
                 maxIdx={liveIdx}

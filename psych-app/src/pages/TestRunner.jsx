@@ -30,6 +30,11 @@ export default function TestRunner() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitAttempt, setSubmitAttempt] = useState(0);
+  const [serverProgress, setServerProgress] = useState({
+    answered_count: 0,
+    total_questions_number: 0,
+  });
+  const [pendingAnswerSyncs, setPendingAnswerSyncs] = useState(0);
 
   /* ---------------- initial fetch ---------------- */
   const load = useCallback(async () => {
@@ -38,6 +43,11 @@ export default function TestRunner() {
     setTest(data.test);
     setAnswers(data.answers);
     setInProgress(Boolean(data.in_progress));
+    setServerProgress({
+      answered_count: data.answered_count ?? Object.keys(data.answers || {}).length,
+      total_questions_number:
+        data.total_questions_number ?? data.test?.total_questions_number ?? 0,
+    });
 
     const firstUnanswered = data.test.questions.findIndex(
       q => !data.answers[q.question_number],
@@ -127,6 +137,7 @@ export default function TestRunner() {
     const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
 
     setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
+    setPendingAnswerSyncs(prev => prev + 1);
 
     // RippleButton gates onClick until ripple ends; advance immediately here.
     if (shouldAutoAdvance) setIdx(idx + 1);
@@ -134,8 +145,18 @@ export default function TestRunner() {
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
       setAnswers(prev => ({ ...prev, ...data.answers }));
+      if (data.answered_count !== undefined || data.total_questions_number !== undefined) {
+        setServerProgress(prev => ({
+          answered_count:
+            data.answered_count ?? prev.answered_count,
+          total_questions_number:
+            data.total_questions_number ?? prev.total_questions_number,
+        }));
+      }
     } catch {
       setErr('Network error — retry by clicking again.');
+    } finally {
+      setPendingAnswerSyncs(prev => Math.max(0, prev - 1));
     }
   };
 
@@ -166,7 +187,9 @@ export default function TestRunner() {
   };
 
   /* submit */
-  const allAnswered = Object.keys(answers).length === test.total_questions_number;
+  const allAnswered =
+    serverProgress.answered_count === serverProgress.total_questions_number &&
+    pendingAnswerSyncs === 0;
 
   const handleSubmit = async () => {
     if (!allAnswered || submitting) return;

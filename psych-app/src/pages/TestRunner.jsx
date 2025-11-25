@@ -24,7 +24,6 @@ export default function TestRunner() {
   /* ---------------- state ---------------- */
   const [test, setTest] = useState(null);
   const [answers, setAnswers] = useState({});
-  const [confirmedAnswers, setConfirmedAnswers] = useState({});
   const [idx, setIdx] = useState(null);
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
@@ -38,7 +37,6 @@ export default function TestRunner() {
 
     setTest(data.test);
     setAnswers(data.answers);
-    setConfirmedAnswers(data.answers);
     setInProgress(Boolean(data.in_progress));
 
     const firstUnanswered = data.test.questions.findIndex(
@@ -114,7 +112,7 @@ export default function TestRunner() {
 
   /* ---------- live test logic ---------- */
   const firstUnansweredIdx = test.questions.findIndex(
-    q => !confirmedAnswers[q.question_number],
+    q => !answers[q.question_number],
   );
   const liveIdx =
     firstUnansweredIdx === -1 ? test.questions.length : firstUnansweredIdx;
@@ -122,40 +120,28 @@ export default function TestRunner() {
   // Safe guard (prevents crash if questions array is empty)
   const firstAnswered =
     Array.isArray(test?.questions) && test.questions.length > 0
-      ? Boolean(confirmedAnswers[test.questions[0].question_number])
+      ? Boolean(answers[test.questions[0].question_number])
       : false;
 
   const handleAnswer = async (qNum, ans) => {
     const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
-    setErr(null);
+
     setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
+
+    // RippleButton gates onClick until ripple ends; advance immediately here.
+    if (shouldAutoAdvance) setIdx(idx + 1);
 
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
-      setConfirmedAnswers(data.answers);
-      setAnswers(data.answers);
-
-      // Auto-advance only after backend confirmation
-      if (shouldAutoAdvance) setIdx(idx + 1);
+      setAnswers(prev => ({ ...prev, ...data.answers }));
     } catch {
-      setAnswers(prev => {
-        const next = { ...prev };
-
-        if (confirmedAnswers[qNum]) {
-          next[qNum] = confirmedAnswers[qNum];
-        } else {
-          delete next[qNum];
-        }
-
-        return next;
-      });
       setErr('Network error — retry by clicking again.');
     }
   };
 
   /* navigation helpers */
   const answeredIdxs = test.questions
-    .map((q, i) => ({ i, answered: !!confirmedAnswers[q.question_number] }))
+    .map((q, i) => ({ i, answered: !!answers[q.question_number] }))
     .filter(({ answered }) => answered)
     .map(({ i }) => i);
 
@@ -180,7 +166,7 @@ export default function TestRunner() {
   };
 
   /* submit */
-  const allAnswered = Object.keys(confirmedAnswers).length === test.total_questions_number;
+  const allAnswered = Object.keys(answers).length === test.total_questions_number;
 
   const handleSubmit = async () => {
     if (!allAnswered || submitting) return;
@@ -289,7 +275,7 @@ export default function TestRunner() {
             {/* Desktop / tablet */}
             <div className="hidden sm:block">
               <ProgressBar
-                current={Object.keys(confirmedAnswers).length}
+                current={Object.keys(answers).length}
                 total={test.total_questions_number}
                 idx={idx}
                 maxIdx={liveIdx}
@@ -409,7 +395,7 @@ export default function TestRunner() {
           >
             <div className="w-full mt-8 mb-6 sm:mt-0 sm:mb-0">
               <ProgressBarMobile
-                current={Object.keys(confirmedAnswers).length}
+                current={Object.keys(answers).length}
                 total={test.total_questions_number}
                 idx={idx}
                 maxIdx={liveIdx}

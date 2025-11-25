@@ -27,6 +27,9 @@ export default function TestRunner() {
   const [idx, setIdx] = useState(null);
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [submitAttempt, setSubmitAttempt] = useState(0);
 
   /* ---------------- initial fetch ---------------- */
   const load = useCallback(async () => {
@@ -166,13 +169,34 @@ export default function TestRunner() {
   const allAnswered = Object.keys(answers).length === test.total_questions_number;
 
   const handleSubmit = async () => {
-    if (!allAnswered) return;
-    try {
-      await markComplete(resultId);
-    } catch (err) {
-      console.warn('markComplete failed', err);
+    if (!allAnswered || submitting) return;
+
+    setSubmitError(null);
+    setSubmitting(true);
+
+    let attempt = 0;
+    const maxDelay = 4000;
+
+    while (attempt < 5) {
+      try {
+        await markComplete(resultId);
+        setSubmitting(false);
+        nav(`/results/${resultId}`);
+        return;
+      } catch (err) {
+        attempt += 1;
+        const delay = Math.min(500 * 2 ** (attempt - 1), maxDelay);
+
+        if (attempt >= 5) {
+          setSubmitError('Unable to submit. Please check your connection and try again.');
+          setSubmitting(false);
+          setSubmitAttempt(prev => prev + 1);
+          return;
+        }
+
+        await new Promise(res => setTimeout(res, delay));
+      }
     }
-    nav(`/results/${resultId}`);
   };
 
   /* current question */
@@ -382,8 +406,13 @@ export default function TestRunner() {
 
             <div className="pt-8 mt-6 self-center">
               <AnimatedSubmitButton
+                key={`submit-mobile-${submitAttempt}`}
                 onClick={(e) => {
                   if (!allAnswered) {
+                    e.preventDefault();
+                    return;
+                  }
+                  if (submitting) {
                     e.preventDefault();
                     return;
                   }
@@ -392,8 +421,10 @@ export default function TestRunner() {
                 className={clsx(
                   'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
                   !allAnswered && 'is-disabled',
-                  allAnswered && 'enabled'
+                  allAnswered && 'enabled',
+                  submitting && 'pointer-events-none opacity-80'
                 )}
+                loading={submitting}
                 labels={['Submit', 'Submitting']}
               />
             </div>
@@ -409,8 +440,13 @@ export default function TestRunner() {
             )}
           >
             <AnimatedSubmitButton
+              key={`submit-desktop-${submitAttempt}`}
               onClick={(e) => {
                 if (!allAnswered) {
+                  e.preventDefault();
+                  return;
+                }
+                if (submitting) {
                   e.preventDefault();
                   return;
                 }
@@ -419,11 +455,19 @@ export default function TestRunner() {
               className={clsx(
                 'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
                 !allAnswered && 'is-disabled',
-                allAnswered && 'enabled'
+                allAnswered && 'enabled',
+                submitting && 'pointer-events-none opacity-80'
               )}
+              loading={submitting}
               labels={['Submit', 'Submitting']}
             />
           </div>
+
+          {submitError && (
+            <p className="text-center text-sm text-red-600" role="alert">
+              {submitError}
+            </p>
+          )}
         </footer>
 
       </div>

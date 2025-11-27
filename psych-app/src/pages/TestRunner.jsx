@@ -13,6 +13,7 @@ import clsx from 'clsx';
 import AnimatedSubmitButton from '../components/AnimatedSubmitButton';
 import Chevron from '../components/Chevron';
 import { fetchResult, submitAnswer, markComplete } from '../api/testing';
+import { parseProgressString } from '../utils/progress';
 import ProgressBar from '../components/ProgressBar';
 import ProgressBarMobile from '../components/ProgressBarMobile';
 import RippleButton from '../components/RippleButton';
@@ -145,12 +146,20 @@ export default function TestRunner() {
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
       setAnswers(prev => ({ ...prev, ...data.answers }));
-      if (data.answered_count !== undefined || data.total_questions_number !== undefined) {
+      const parsedProgress = parseProgressString(data.progress);
+
+      if (
+        data.answered_count !== undefined ||
+        data.total_questions_number !== undefined ||
+        parsedProgress
+      ) {
         setServerProgress(prev => ({
           answered_count:
-            data.answered_count ?? prev.answered_count,
+            data.answered_count ?? parsedProgress?.answered_count ?? prev.answered_count,
           total_questions_number:
-            data.total_questions_number ?? prev.total_questions_number,
+            data.total_questions_number
+              ?? parsedProgress?.total_questions_number
+              ?? prev.total_questions_number,
         }));
       }
     } catch {

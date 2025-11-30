@@ -29,6 +29,7 @@ export default function TestRunner() {
   const [error, setErr] = useState(null);
   const [inProgress, setInProgress] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [preloading, setPreloading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitAttempt, setSubmitAttempt] = useState(0);
   const [serverProgress, setServerProgress] = useState({
@@ -62,6 +63,19 @@ export default function TestRunner() {
 
   useEffect(() => { load(); }, [load]);
 
+  const allAnswered =
+    serverProgress.answered_count === serverProgress.total_questions_number &&
+    pendingAnswerSyncs === 0;
+
+  useEffect(() => {
+    if (!test) return;
+
+    const answeredLocally = Object.keys(answers).length;
+    const reachedEndLocally = answeredLocally >= test.total_questions_number;
+    const waitingForServerGate = reachedEndLocally && !allAnswered;
+
+    setPreloading(waitingForServerGate && !submitting);
+  }, [answers, allAnswered, submitting, test]);
   /* 🧠 HOOKS MUST STAY ABOVE ANY EARLY RETURN */
   const handleSeek = useCallback((newIdx) => setIdx(newIdx), []);
 
@@ -195,10 +209,7 @@ export default function TestRunner() {
     setIdx(next);
   };
 
-  /* submit */
-  const allAnswered =
-    serverProgress.answered_count === serverProgress.total_questions_number &&
-    pendingAnswerSyncs === 0;
+
 
   const handleSubmit = async () => {
     if (!allAnswered || submitting) return;
@@ -456,7 +467,8 @@ export default function TestRunner() {
                   allAnswered && 'enabled',
                   submitting && 'pointer-events-none opacity-80'
                 )}
-                loading={submitting}
+                submitting={submitting}
+                preloading={preloading}
                 labels={['Submit', 'Submitting']}
               />
             </div>
@@ -490,7 +502,8 @@ export default function TestRunner() {
                 allAnswered && 'enabled',
                 submitting && 'pointer-events-none opacity-80'
               )}
-              loading={submitting}
+              submitting={submitting}
+              preloading={preloading}
               labels={['Submit', 'Submitting']}
             />
           </div>

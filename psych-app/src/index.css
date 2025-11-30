@@ -172,6 +172,6 @@ body::-webkit-scrollbar {     /* Chrome / Safari */
   --text: #9CA3AF;      /* tailwind gray-400 */
   cursor: not-allowed;
   pointer-events: none; /* block clicks */
-  border: none;
+  border: 1px solid transparent !important;
 }
 

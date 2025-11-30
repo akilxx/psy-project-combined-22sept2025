@@ -3,7 +3,8 @@ import React, { useState } from "react";
 
 export default function AnimatedSubmitButton({
   onClick,
-  loading = false,
+  submitting = false,
+  preloading = false,
   duration = 1500,
   labels = ["Submit", "Submitting"],
   className = "",
@@ -14,7 +15,7 @@ export default function AnimatedSubmitButton({
 
   const handleClick = (e) => {
     e.preventDefault();
-    if (state === "downloading") return;
+    if (state === "downloading" || preloading) return;
     setState("downloading");
     onClick?.();
   };
@@ -26,8 +27,9 @@ export default function AnimatedSubmitButton({
       <a
         href="#"
         onClick={handleClick}
-        className={`button ${loading ? "loading" : ""} ${className}`}
+        className={`button ${submitting ? "loading" : ""} ${preloading ? "preloading" : ""} ${className}`}
         data-state={state}
+        aria-disabled={preloading}
         style={{
           ["--duration"]: String(duration),
           ["--submitted-bg"]: submittedBg,
@@ -68,6 +70,17 @@ const css = `
 }
 .button:active { transform: scale(.95); }
 
+
+/* Loading (disabled) state with full-button blinking background */
+.button.preloading {
+  --background: #EBEBEB;
+  --text: #000000ff;
+  cursor: not-allowed;
+  pointer-events: none;
+  border: 1px solid transparent !important;
+  animation: blink 1s ease-in-out infinite;
+}
+
 /* After it has slid to “Submitting”: switch background to submitted blue, after a slight delay */
 .button[data-state="downloading"] {
   --background: var(--submitted-bg, #338764);
@@ -100,7 +113,7 @@ const css = `
 
 /* Slide to “Submitting” */
 .button[data-state="downloading"] ul {
-  transition: transform 250ms ease;
+  transition: transform 250ms linear;
   transform: translateY(-100%);
 }
 
@@ -120,6 +133,12 @@ const css = `
   0% { transform: translateY(0); }
   10%, 100% { transform: translateY(-100%); }
 }
+
+@keyframes blink {
+  0%, 100% { background-color: #EBEBEB; }
+  50% { background-color: #f8f061ff; }
+}
+
 @keyframes line {
   5%, 10%   { transform: translateY(-30px); }
   40%       { transform: translateY(-20px); }

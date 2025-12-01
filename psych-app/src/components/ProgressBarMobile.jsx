@@ -1,7 +1,7 @@
 // psych-app/src/components/ProgressBarMobile.jsx
 import React, { useRef, useEffect, useCallback } from "react";
 
-const BLUE_400 = "#60A5FA"; // Tailwind 'blue-400'
+const GREEN = "#10B982"; // Tailwind 'blue-400'
 const GRAY_DISABLED = "#DEDEDE";
 
 function ProgressBarMobile({
@@ -83,7 +83,7 @@ function ProgressBarMobile({
           style={{ touchAction: "none" }}
         >
           <div
-            className="absolute left-0 top-0 h-2 bg-blue-400 rounded-md sm:rounded-full transition-[width]"
+            className="absolute left-0 top-0 h-2 bg-[#10B982] rounded-md sm:rounded-full transition-[width]"
             style={{ width: `${pct}%` }}
           />
 
@@ -107,8 +107,8 @@ function ProgressBarMobile({
               style={{
                 left: `${Math.max(0, Math.min(100, thumbPct))}%`,
                 transform: "translate(-50%, -50%)",
-                backgroundColor: disabled ? GRAY_DISABLED : BLUE_400,
-                borderColor: disabled ? GRAY_DISABLED : BLUE_400,
+                backgroundColor: disabled ? GRAY_DISABLED : GREEN,
+                borderColor: disabled ? GRAY_DISABLED : GREEN,
               }}
             >
               {displayValue}

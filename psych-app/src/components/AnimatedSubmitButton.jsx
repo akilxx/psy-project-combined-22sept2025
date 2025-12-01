@@ -48,7 +48,7 @@ export default function AnimatedSubmitButton({
 
 const css = `
 .button {
-  --background: #4BC793;
+  --background: #10B982;
   --success: #338764; 
   --text: #fff;
   --arrow: #fff;

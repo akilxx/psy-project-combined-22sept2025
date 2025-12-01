@@ -1,15 +1,15 @@
 // psych-app/src/components/ProgressBar.jsx
 import React, { useRef, useEffect, useCallback } from "react";
 
-const BLUE_400 = "#60A5FA";   // Tailwind 'blue-400'
+const GREEN = "#10B982";   // Tailwind 'blue-400'
 const GRAY_DISABLED = "#DEDEDE";
 
 /* Mini tear badge with internal visual-centering + scalable path */
 function TearBadgeMini({
   value = 60,
   width = 64,           // mobile default; desktop passes its own width
-  fill = BLUE_400,
-  stroke = BLUE_400,
+  fill = GREEN,
+  stroke = GREEN,
   strokeWidth = 4,
   scale = 0.7,          // matches your original
   className = "",
@@ -131,7 +131,7 @@ export default function ProgressBar({
         >
           {/* filled track */}
           <div
-            className="absolute left-0 top-0 h-2 bg-blue-400 rounded-md sm:rounded-full transition-[width]"
+            className="absolute left-0 top-0 h-2 bg-[#10B982] rounded-md sm:rounded-full transition-[width]"
             style={{ width: `${pct}%` }}
           />
 
@@ -156,8 +156,8 @@ export default function ProgressBar({
               style={{
                 left: `${Math.max(0, Math.min(100, thumbPct))}%`,
                 transform: "translate(-50%, -50%)",
-                backgroundColor: disabled ? GRAY_DISABLED : BLUE_400, // solid color, no opacity
-                borderColor: disabled ? GRAY_DISABLED : BLUE_400,
+                backgroundColor: disabled ? GRAY_DISABLED : GREEN, // solid color, no opacity
+                borderColor: disabled ? GRAY_DISABLED : GREEN,
               }}
             >
                 {/* tear: top edge just below thumb; bottom hangs outside gray rectangle */}
@@ -173,8 +173,8 @@ export default function ProgressBar({
                   <TearBadgeMini
                     value={thumbIndex + 1}
                     width={64}       /* mobile */
-                    fill={disabled ? GRAY_DISABLED : BLUE_400}
-                    stroke={disabled ? GRAY_DISABLED : BLUE_400}
+                    fill={disabled ? GRAY_DISABLED : GREEN}
+                    stroke={disabled ? GRAY_DISABLED : GREEN}
                     strokeWidth={4}
                     scale={0.7}
                   />
@@ -192,8 +192,8 @@ export default function ProgressBar({
                   <TearBadgeMini
                     value={thumbIndex + 1}
                     width={84}       /* desktop */
-                    fill={disabled ? GRAY_DISABLED : BLUE_400}
-                    stroke={disabled ? GRAY_DISABLED : BLUE_400}
+                    fill={disabled ? GRAY_DISABLED : GREEN}
+                    stroke={disabled ? GRAY_DISABLED : GREEN}
                     strokeWidth={4}
                     scale={0.7}
                   />

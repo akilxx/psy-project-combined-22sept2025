@@ -219,10 +219,12 @@ export default function TestRunner() {
 
     let attempt = 0;
     const maxDelay = 4000;
+    const submissionAnimationDelay = 500;
 
     while (attempt < 5) {
       try {
         await markComplete(resultId);
+        await new Promise(res => setTimeout(res, submissionAnimationDelay));
         setSubmitting(false);
         nav(`/results/${resultId}`);
         return;
@@ -290,7 +292,7 @@ export default function TestRunner() {
               
               selected
                 ? 'bg-black text-white text-sm border border-black'
-                : 'bg-blue-50 text-black text-sm hover:bg-black border border-blue-100 hover:text-white hover:border-black',
+                : 'bg-[#F7FDFF] text-black text-sm hover:bg-black border border-[#E3F8FF] hover:text-white hover:border-black',
             )}
           >
             <span className="inline-block animate-fadeIn">{opt}</span>

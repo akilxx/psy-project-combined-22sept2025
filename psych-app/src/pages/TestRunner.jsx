@@ -213,6 +213,10 @@ export default function TestRunner() {
     }
   };
 
+  /* current question */
+  const q = test.questions[idx];
+  const prevAnswer = answers[q.question_number]?.answer;
+
   /* navigation helpers */
   const answeredIdxs = test.questions
     .map((q, i) => ({ i, answered: !!answers[q.question_number] }))
@@ -231,7 +235,9 @@ export default function TestRunner() {
   const canGoPrev = answeredIdxs.some(i => i < idx);
 
   const nextNavigableIdx = findNextIdx(idx, answers);
-  const canGoNext = allowedIdxs.length > 0 && nextNavigableIdx !== idx;
+  const isCurrentAnswered = !!answers[q.question_number];
+  const canGoNext =
+    isCurrentAnswered && allowedIdxs.length > 0 && nextNavigableIdx !== idx;
   const goPrev = () => {
     if (!canGoPrev) return;
     const prev = [...answeredIdxs].filter(i => i < idx).pop();
@@ -278,9 +284,7 @@ export default function TestRunner() {
     }
   };
 
-  /* current question */
-  const q = test.questions[idx];
-  const prevAnswer = answers[q.question_number]?.answer;
+
   /* --- mobile question sizing based on longest question --- */
   const maxQuestionChars = Array.isArray(test.questions)
     ? Math.max(...test.questions.map(item => (item.text || '').length))

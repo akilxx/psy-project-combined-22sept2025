@@ -148,14 +148,44 @@ export default function TestRunner() {
       ? Boolean(answers[test.questions[0].question_number])
       : false;
 
-  const handleAnswer = async (qNum, ans) => {
-    const shouldAutoAdvance = idx === liveIdx && liveIdx < test.questions.length - 1;
+  const findNextIdx = (currentIdx, answersMap) => {
+    const answeredList = [];
+    const unansweredList = [];
 
-    setAnswers(prev => ({ ...prev, [qNum]: { answer: ans } }));
+    test.questions.forEach((question, i) => {
+      if (answersMap[question.question_number]) {
+        answeredList.push(i);
+      } else {
+        unansweredList.push(i);
+      }
+    });
+
+    if (unansweredList.length) {
+      const nextUnanswered = unansweredList.find(i => i > currentIdx);
+      return nextUnanswered ?? unansweredList[0];
+    }
+
+    const nextAnswered = answeredList.find(i => i > currentIdx);
+    if (nextAnswered !== undefined) return nextAnswered;
+
+    const lastAnswered = answeredList[answeredList.length - 1];
+    return lastAnswered ?? currentIdx;
+  };
+
+
+
+  const handleAnswer = async (qNum, ans) => {
+    let nextIdx = idx;
+
+    setAnswers(prev => {
+      const updated = { ...prev, [qNum]: { answer: ans } };
+      nextIdx = findNextIdx(idx, updated);
+      return updated;
+    });
     setPendingAnswerSyncs(prev => prev + 1);
 
     // RippleButton gates onClick until ripple ends; advance immediately here.
-    if (shouldAutoAdvance) setIdx(idx + 1);
+    setIdx(nextIdx);
 
     try {
       const { data } = await submitAnswer(resultId, qNum, ans);
@@ -177,7 +207,7 @@ export default function TestRunner() {
         }));
       }
     } catch {
-      setErr('Network error — retry by clicking again.');
+      setErr('Network error — please retry by reloading the page.');
     } finally {
       setPendingAnswerSyncs(prev => Math.max(0, prev - 1));
     }
@@ -189,14 +219,19 @@ export default function TestRunner() {
     .filter(({ answered }) => answered)
     .map(({ i }) => i);
 
-  const allowedIdxs =
-    liveIdx < test.questions.length
-      ? [...answeredIdxs, liveIdx]
-      : answeredIdxs;
+  const unansweredIdxs = test.questions
+    .map((q, i) => ({ i, answered: !!answers[q.question_number] }))
+    .filter(({ answered }) => !answered)
+    .map(({ i }) => i);
+
+  const allowedIdxs = Array.from(new Set([...answeredIdxs, ...unansweredIdxs])).sort(
+    (a, b) => a - b,
+  );
 
   const canGoPrev = answeredIdxs.some(i => i < idx);
-  const canGoNext = allowedIdxs.some(i => i > idx);
 
+  const nextNavigableIdx = findNextIdx(idx, answers);
+  const canGoNext = allowedIdxs.length > 0 && nextNavigableIdx !== idx;
   const goPrev = () => {
     if (!canGoPrev) return;
     const prev = [...answeredIdxs].filter(i => i < idx).pop();
@@ -205,8 +240,7 @@ export default function TestRunner() {
 
   const goNext = () => {
     if (!canGoNext) return;
-    const next = [...allowedIdxs].filter(i => i > idx).shift();
-    setIdx(next);
+    setIdx(nextNavigableIdx);
   };
 
 

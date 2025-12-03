@@ -34,7 +34,7 @@ export default function TestStart({ useAltRunner = false }) {
       } catch (err) {
         setError(
           err.response?.data?.detail ||
-          'Could not start the test — please try again.'
+          'Could not start the test — please retry by reloading the page.'
         );
       }
     })();

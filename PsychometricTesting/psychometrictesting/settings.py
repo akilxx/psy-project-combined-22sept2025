@@ -153,7 +153,8 @@ ANYMAIL = {
     'MAILGUN_API_KEY': config('MAILGUN_API_KEY'),
     'MAILGUN_SENDER_DOMAIN': config('MAILGUN_SENDER_DOMAIN', default='www.big5test.org'),
 }
-DEFAULT_FROM_EMAIL = 'Big5Test <akil.s@big5test.org>'
+
+DEFAULT_FROM_EMAIL = 'Big5Test <akil.s@www.empiricity.com>'
 
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = config('STRIPE_PUBLISHABLE_KEY')

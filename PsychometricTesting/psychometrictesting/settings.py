@@ -150,8 +150,8 @@ GEOIP_PATH = BASE_DIR / 'geoip'
 
 # Anymail Configuration
 ANYMAIL = {
-    'MAILGUN_API_KEY': 'b4574f43ef437b310850f323e4a7570c-f6fe91d3-4e4d93ed',
-    'MAILGUN_SENDER_DOMAIN': 'www.big5test.org',  # e.g., 'mg.yourdomain.com'
+    'MAILGUN_API_KEY': config('MAILGUN_API_KEY'),
+    'MAILGUN_SENDER_DOMAIN': config('MAILGUN_SENDER_DOMAIN', default='www.big5test.org'),
 }
 DEFAULT_FROM_EMAIL = 'Big5Test <akil.s@big5test.org>'
 

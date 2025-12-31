@@ -12,7 +12,7 @@ import AltTestRunner from './pages/AltTestRunner';
 import Results from './pages/Results';
 import PaymentElementPage from './pages/PaymentElementPage';
 import SubscriptionPage from './pages/Subscription';
-
+import Report from './pages/Report';
 
 
 
@@ -49,6 +49,14 @@ export default function App() {
                 <SubscriptionPage />
               </ProtectedRoute>
             }
+          />
+          <Route 
+            path="/report/:testResultId" 
+            element={
+              <ProtectedRoute>
+                <Report />
+              </ProtectedRoute>
+            } 
           />
 
         </Routes>

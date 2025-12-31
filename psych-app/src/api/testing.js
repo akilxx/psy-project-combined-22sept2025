@@ -1,6 +1,6 @@
-//psych-app/src/api/testing.js
+// psych-app/src/api/testing.js
 
-import api from './axios';
+import api from './axios'; // This handles your Auth Headers & Base URL
 
 // start a test
 export const startTest = testId =>
@@ -24,12 +24,25 @@ export const markComplete = resultId =>
     params: { test_result_id: resultId },
   });
 
-// list results (optionally ?completed=true/false)
+// list results
 export const listResults = params =>
   api.get('/testing/test/list/', { params });
-
 
 export const associateTest = resultId =>
   api.post('/testing/test/associate-user/', null, {
     params: { test_result_id: resultId },
   });
+
+// --- CORRECTIONS BELOW ---
+
+export const getTestReport = async (testResultId) => {
+    // Use 'api', not 'axios'
+    const response = await api.get(`/reportgeneration/report/${testResultId}/`);
+    return response.data;
+};
+
+export const unlockReportWithSubscription = async (testResultId) => {
+    // Use 'api', not 'axios'
+    const response = await api.post(`/reportgeneration/report/${testResultId}/unlock/`);
+    return response.data;
+};

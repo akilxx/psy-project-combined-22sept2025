@@ -6,12 +6,14 @@ import { fetchResult, markComplete } from '../api/testing';
 import ModifiedCard from '../components/ModifiedCard';
 import ResultsTable from '../components/ResultsTable';   // ← your new table
 
+
 export default function Results() {
   /* ───────── state ───────── */
   const { resultId }          = useParams();
   const [tr, setTr]           = useState(null);
   const [working, setWorking] = useState(false);
   const [error, setError]     = useState(null);
+  
 
   /* ───────── helpers ───────── */
   const loadResult = () =>
@@ -143,5 +145,6 @@ if (!tr) {
         </div>
       </ModifiedCard>
     </div>
+    
   );
 }

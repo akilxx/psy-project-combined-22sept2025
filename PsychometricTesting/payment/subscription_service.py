@@ -1,4 +1,4 @@
-"""Utilities for managing subscription lifecycle, allowances, and Stripe integration."""
+"""payment/subscription_service.py - Utilities for managing subscription lifecycle, allowances, and Stripe integration."""
 from __future__ import annotations
 
 import logging
@@ -206,14 +206,19 @@ def record_monthly_accruals(reference_time: Optional[datetime] = None) -> int:
 
 
 def consume_allowance(
-    *,
-    subscription: UserSubscription,
-    test: Optional[PsychometricTest] = None,
-    quantity: int = 1,
+        *,
+        subscription: UserSubscription,
+        test: Optional[PsychometricTest] = None,
+        quantity: int = 1,
 ) -> Optional[TestAllowanceLedger]:
+    # MODIFIED: Always record consumption, even for unlimited (record as 0 cost)
     if subscription.plan.unlimited_tests:
-        logger.debug("Subscription %s has unlimited allowance; no ledger entry created.", subscription.id)
-        return None
+        logger.debug("Subscription %s has unlimited allowance; recording 0-cost entry.", subscription.id)
+        return subscription.record_consumption(
+            quantity=0,
+            test=test,
+            note="Unlimited plan access"
+        )
 
     if quantity <= 0:
         raise ValueError("Quantity must be positive when consuming allowance.")

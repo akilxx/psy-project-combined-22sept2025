@@ -173,8 +173,24 @@ class UserSubscription(models.Model):
         )
 
     def record_consumption(self, quantity=1, test=None, note="Test consumption"):
+        """
+        Records consumption of a test credit.
+        If the plan is unlimited, we record a 0-cost entry so the system can track usage
+        and link reports to a valid ledger entry.
+        """
+        # --- FIX: Handle Unlimited Plans ---
         if self.plan.unlimited_tests:
-            return None
+            # We create a ledger entry with quantity 0 to track the event without deducting balance.
+            return TestAllowanceLedger.objects.create(
+                subscription=self,
+                entry_type=TestAllowanceLedger.ENTRY_CONSUMPTION,
+                quantity=0,
+                test=test,
+                note=note or "Unlimited plan access",
+            )
+        # -----------------------------------
+
+        # Standard consumption for limited plans
         return TestAllowanceLedger.objects.create(
             subscription=self,
             entry_type=TestAllowanceLedger.ENTRY_CONSUMPTION,

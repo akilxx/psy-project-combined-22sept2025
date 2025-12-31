@@ -1,9 +1,9 @@
 # reportgeneration/models.py
 
 from django.db import models
-from testing.models import PsychometricTest  # Import your PsychometricTest model
-from payment.models import Payment  # Import your PsychometricTest model
 from django.core.exceptions import ValidationError
+from testing.models import PsychometricTest, TestResult
+from payment.models import Payment, TestAllowanceLedger
 
 
 class ReportTemplate(models.Model):
@@ -33,16 +33,31 @@ class ContentBlock(models.Model):
 
 
 class TestReport(models.Model):
+    # Primary Link: The result this report describes
+    test_result = models.OneToOneField(
+        TestResult,
+        on_delete=models.CASCADE,
+        related_name='generated_report',
+    )
+
+    # Funding Source A: Direct Payment (Optional)
     payment = models.OneToOneField(
         Payment,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='test_report'
     )
-    # We assume report_content is a list of dictionaries, e.g.:
-    # [
-    #     {"trait": "neuroticism", "percentile": 99, "text": "Sample text."},
-    #     {"trait": "extraversion", "percentile": 45, "text": "Some other text."},
-    # ]
+
+    # Funding Source B: Subscription Allowance (Optional)
+    ledger_entry = models.OneToOneField(
+        TestAllowanceLedger,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='test_report'
+    )
+
     report_content = models.JSONField(
         default=list,
         help_text='A list of dictionaries with keys: "trait", "percentile", "text".'
@@ -50,44 +65,41 @@ class TestReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def clean(self):
-        """
-        Custom validation to ensure:
-        1. The associated payment has a status of 'succeeded'.
-        2. The report_content includes entries for all traits from the associated PsychometricTest.
-        """
         super().clean()
 
-        # Ensure the payment has a succeeded status.
-        if self.payment.status != 'succeeded':
-            raise ValidationError("TestReport can only be created for payments with a 'succeeded' status.")
+        # 1. Validate Funding Source
+        # We require either a succeeded payment OR a ledger entry
+        has_valid_payment = self.payment and self.payment.status == 'succeeded'
+        has_allowance = self.ledger_entry is not None
 
-        # Ensure the payment is linked to a test.
-        if not self.payment.test:
-            raise ValidationError("The associated Payment must have a PsychometricTest assigned.")
+        if not (has_valid_payment or has_allowance):
+            raise ValidationError(
+                "TestReport must be linked to either a succeeded Payment or a Subscription Allowance (Ledger Entry)."
+            )
 
-        # Get the list of expected traits and dimensions from the PsychometricTest.
-        expected_traits = set()
-        for trait in self.payment.test.traits:
-            # Add the trait's name
-            expected_traits.add(trait['name'])
-            # Add each dimension associated with the trait
-            for dimension in trait.get('dimensions', []):
-                expected_traits.add(dimension)
+        # 2. Validate Test Result
+        if not self.test_result:
+            raise ValidationError("TestReport must be linked to a TestResult.")
 
-        # Ensure the report_content is a list.
+        # 3. Validate Content Completeness
         if not isinstance(self.report_content, list):
             raise ValidationError("The report content must be a list of dictionaries.")
 
-        # Extract the traits reported in the TestReport.
-        reported_traits = {entry.get("trait") for entry in self.report_content if "trait" in entry}
+        # Check if all expected traits are present
+        test_instance = self.test_result.test
+        expected_traits = set()
+        for trait in test_instance.traits:
+            expected_traits.add(trait['name'])
+            for dimension in trait.get('dimensions', []):
+                expected_traits.add(dimension)
 
-        # Check if any expected trait is missing.
+        reported_traits = {entry.get("trait") for entry in self.report_content if "trait" in entry}
         missing_traits = expected_traits - reported_traits
+
         if missing_traits:
             raise ValidationError(
-                f"TestReport is missing report entries for the following traits: {', '.join(missing_traits)}"
+                f"TestReport is missing report entries for: {', '.join(missing_traits)}"
             )
 
     def __str__(self):
-        return f"TestReport for Payment {self.payment.id}"
-    
+        return f"TestReport for Result {self.test_result.uuid}"

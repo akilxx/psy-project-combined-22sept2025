@@ -489,5 +489,8 @@ class TestResultListView(generics.GenericAPIView):
             test_result_ids = request.session.get('test_result_ids', [])
             test_results = TestResult.objects.filter(uuid__in=test_result_ids)
 
+        # Optimize queries by prefetching related objects
+        test_results = test_results.select_related('test', 'generated_report').order_by('-created_at')
+
         serializer = self.get_serializer(test_results, many=True)
         return Response(serializer.data)

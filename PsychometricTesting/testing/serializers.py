@@ -215,10 +215,12 @@ class TestResultListSerializer(serializers.ModelSerializer):
         queryset=PsychometricTest.objects.all(),
         help_text='The psychometric test associated with this result.'
     )
+    test_name = serializers.CharField(source='test.test_name', read_only=True, help_text='The name of the test.')
+    has_report = serializers.SerializerMethodField(help_text='Whether a report exists for this test result.')
 
     class Meta:
         model = TestResult
-        fields = ['uuid', 'test', 'attempt_number', 'created_at', 'completed', 'in_progress', 'scores', 'percentiles']
+        fields = ['uuid', 'test', 'test_name', 'attempt_number', 'created_at', 'completed', 'in_progress', 'scores', 'percentiles', 'has_report']
 
     @extend_schema_field(ScoreSerializer(many=True, allow_null=True))
     def get_scores(self, obj):
@@ -227,6 +229,10 @@ class TestResultListSerializer(serializers.ModelSerializer):
     @extend_schema_field(PercentileSerializer(many=True, allow_null=True))
     def get_percentiles(self, obj):
         return obj.percentiles
+
+    def get_has_report(self, obj):
+        """Check if a TestReport exists for this TestResult."""
+        return hasattr(obj, 'generated_report') and obj.generated_report is not None
 
 class ErrorResponseSerializer(serializers.Serializer):
     """

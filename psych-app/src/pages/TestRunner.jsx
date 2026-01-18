@@ -339,8 +339,8 @@ export default function TestRunner() {
               'w-full relative overflow-hidden whitespace-nowrap text-center py-1 px-3 sm:px-4 font-bold rounded-[10px] transition',
               
               selected
-                ? 'bg-black text-white text-sm border border-black'
-                : 'bg-[#F7FDFF] text-black text-sm hover:bg-black  hover:text-white hover:border-black',
+                ? 'bg-[#5C97EC] text-white text-sm '
+                : 'bg-[#F7FDFF] text-black text-sm hover:bg-[#5C97EC] hover:text-white hover:border-black',
             )}
           >
             <span className="inline-block animate-fadeIn">{opt}</span>

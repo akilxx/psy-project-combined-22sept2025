@@ -69,16 +69,35 @@ class TestResultViewSet(viewsets.ViewSet):
             logger.error("Serializer errors: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         test = serializer.validated_data['test']
+
+        # Calculate the attempt number based on previous test results
         if request.user.is_authenticated:
+            # For authenticated users, count previous attempts for this user and test
+            previous_attempts = TestResult.objects.filter(
+                user=request.user,
+                test=test
+            ).count()
+            attempt_number = previous_attempts + 1
+
             test_result = TestResult.objects.create(
                 test=test,
                 user=request.user,
-                session_key=request.session.session_key
+                session_key=request.session.session_key,
+                attempt_number=attempt_number
             )
         else:
+            # For anonymous users, count previous attempts for this session and test
+            previous_attempts = TestResult.objects.filter(
+                session_key=request.session.session_key,
+                test=test,
+                user__isnull=True
+            ).count()
+            attempt_number = previous_attempts + 1
+
             test_result = TestResult.objects.create(
                 test=test,
-                session_key=request.session.session_key
+                session_key=request.session.session_key,
+                attempt_number=attempt_number
             )
             if 'test_result_ids' not in request.session:
                 request.session['test_result_ids'] = []

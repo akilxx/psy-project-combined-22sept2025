@@ -3,6 +3,28 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getTestReport, unlockReportWithSubscription } from '../api/testing';
 import RippleButton from '../components/RippleButton';
 
+
+
+// -----------------------------------------------------------------------------
+// RETRY HELPER (Fixes Race Condition)
+// -----------------------------------------------------------------------------
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const retryUnlock = async (fn, retries = 3, delay = 1500) => {
+    try {
+        return await fn();
+    } catch (err) {
+        // If it's a client error (e.g. 403, 400) or we ran out of retries, stop.
+        if ((err.response && err.response.status < 500) || retries <= 0) {
+            throw err;
+        }
+        // Wait and try again
+        await wait(delay);
+        return retryUnlock(fn, retries - 1, delay);
+    }
+};
+
 // -----------------------------------------------------------------------------
 // LOCAL COMPONENTS (For consistent styling independent of global components)
 // -----------------------------------------------------------------------------
@@ -49,7 +71,10 @@ const Report = () => {
                 if (err.response && err.response.status === 404) {
                     try {
                         console.log("Report not found. Attempting auto-unlock via subscription...");
-                        await unlockReportWithSubscription(testResultId);
+                        
+                        // --- CHANGED: Wrapped in retryUnlock ---
+                        await retryUnlock(() => unlockReportWithSubscription(testResultId), 3, 1500);
+                        // ---------------------------------------
                         
                         // 3. If unlock succeeds, fetch the report again
                         const newData = await getTestReport(testResultId);
@@ -57,24 +82,17 @@ const Report = () => {
                     } catch (unlockErr) {
                         console.error("Auto-unlock failed:", unlockErr);
                         
-                        // Check if we got a response from the server
                         if (unlockErr.response) {
                             const status = unlockErr.response.status;
                             
-                            // 4xx Errors (e.g. 403 Forbidden, 400 Bad Request)
-                            // These are valid responses meaning "You are not allowed" -> Show Locked Screen
                             if (status >= 400 && status < 500) {
                                 const backendMsg = unlockErr.response.data?.detail || "You do not have access to this report.";
                                 setUnlockError(backendMsg);
                                 setAccessDenied(true);
                             } else {
-                                // 5xx Errors (e.g. 500 Internal Server Error)
-                                // The server crashed -> Show Generic Error Screen
                                 setError("Server error occurred while unlocking. Please try again later.");
                             }
                         } else {
-                            // No response received (e.g. Offline / DNS failure)
-                            // This is a Network Error -> Show Generic Error Screen
                             setError("Network error. Please check your internet connection.");
                         }
                     }

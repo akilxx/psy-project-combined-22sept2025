@@ -38,28 +38,38 @@ export default function TestRunner() {
   });
   const [pendingAnswerSyncs, setPendingAnswerSyncs] = useState(0);
 
-  /* ---------------- initial fetch ---------------- */
+/* ---------------- initial fetch ---------------- */
   const load = useCallback(async () => {
-    const { data } = await fetchResult(resultId);
+    try {
+      const { data } = await fetchResult(resultId);
 
-    setTest(data.test);
-    setAnswers(data.answers);
-    setInProgress(Boolean(data.in_progress));
-    setServerProgress({
-      answered_count: data.answered_count ?? Object.keys(data.answers || {}).length,
-      total_questions_number:
-        data.total_questions_number ?? data.test?.total_questions_number ?? 0,
-    });
+      setTest(data.test);
+      setAnswers(data.answers);
+      setInProgress(Boolean(data.in_progress));
+      setServerProgress({
+        answered_count: data.answered_count ?? Object.keys(data.answers || {}).length,
+        total_questions_number:
+          data.total_questions_number ?? data.test?.total_questions_number ?? 0,
+      });
 
-    const firstUnanswered = data.test.questions.findIndex(
-      q => !data.answers[q.question_number],
-    );
-    setIdx(
-      firstUnanswered === -1
-        ? data.test.questions.length - 1
-        : firstUnanswered,
-    );
-  }, [resultId]);
+      const firstUnanswered = data.test.questions.findIndex(
+        q => !data.answers[q.question_number],
+      );
+      setIdx(
+        firstUnanswered === -1
+          ? data.test.questions.length - 1
+          : firstUnanswered,
+      );
+    } catch (err) {
+      // Catch 404 specifically
+      if (err.response && err.response.status === 404) {
+        // Redirect to login if the test isn't found (likely requires auth)
+        nav('/login', { replace: true });
+        return;
+      }
+      setErr('Failed to load test. Please check your connection or try again.');
+    }
+  }, [resultId, nav]);
 
   useEffect(() => { load(); }, [load]);
 

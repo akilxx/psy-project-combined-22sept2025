@@ -175,8 +175,11 @@ export default function TestRunner() {
       return nextUnanswered ?? unansweredList[0];
     }
 
-    // If all questions are answered, stay on the current question
-    return currentIdx;
+    const nextAnswered = answeredList.find(i => i > currentIdx);
+    if (nextAnswered !== undefined) return nextAnswered;
+
+    const lastAnswered = answeredList[answeredList.length - 1];
+    return lastAnswered ?? currentIdx;
   };
 
 

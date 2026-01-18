@@ -241,65 +241,22 @@ const Report = () => {
                         Print
                     </button>
                 </div>
-                <h1 className="text-3xl font-semibold text-slate-900">Test Report</h1>
-                <p className="mt-2 max-w-2xl text-slate-600">
-                    Your detailed psychometric analysis including personality traits and percentile rankings.
-                </p>
-            </div>
-
-            {/* Report Summary Card */}
-            <div className="rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm mb-6">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div>
-                        <p className="uppercase text-xs tracking-wide text-indigo-500 font-semibold">
-                            Test completed
-                        </p>
-                        <h2 className="text-2xl font-semibold text-slate-900">
-                            Psychometric Assessment
-                        </h2>
-                        <p className="mt-2 text-slate-600 max-w-xl">
-                            Your results have been processed successfully. Below is a breakdown of your performance across key personality traits relative to the population norm.
-                        </p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-sm text-slate-500">Completed on</p>
-                        <p className="text-lg font-semibold text-slate-900">
-                            {formatDate(reportData.created_at)}
+                <div className="flex items-center justify-between">
+                    <h1 className="text-3xl font-semibold text-slate-900">Test Report</h1>
+                    <div className="flex items-center gap-3">
+                        <p className="text-sm text-slate-600">
+                            Completed on {formatDate(reportData.created_at)}
                         </p>
                         {reportData.access_method && (
-                            <span className="mt-2 inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                                {reportData.access_method.replace(/_/g, ' ')}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-slate-500">Accessed via</span>
+                                <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                    {reportData.access_method.replace(/_/g, ' ')}
+                                </span>
+                            </div>
                         )}
                     </div>
                 </div>
-
-                <dl className="mt-6 grid gap-4 sm:grid-cols-3">
-                    <div>
-                        <dt className="text-xs uppercase tracking-wide text-slate-500">
-                            Total traits
-                        </dt>
-                        <dd className="text-sm font-medium text-slate-900">
-                            {reportData.report_content.length}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-xs uppercase tracking-wide text-slate-500">
-                            Current trait
-                        </dt>
-                        <dd className="text-sm text-slate-900">
-                            {currentTraitIndex + 1} of {reportData.report_content.length}
-                        </dd>
-                    </div>
-                    <div>
-                        <dt className="text-xs uppercase tracking-wide text-slate-500">
-                            Status
-                        </dt>
-                        <dd className="text-sm text-slate-900">
-                            Complete
-                        </dd>
-                    </div>
-                </dl>
             </div>
 
             {/* Trait Analysis Card */}
@@ -326,61 +283,43 @@ const Report = () => {
                     </div>
                 </div>
 
-                {/* Trait Cards Grid */}
-                <div className="space-y-4">
-                    {reportData.report_content.map((trait, idx) => {
-                        const isSelected = idx === currentTraitIndex;
-                        return (
-                            <button
-                                key={idx}
-                                type="button"
-                                onClick={() => setCurrentTraitIndex(idx)}
-                                className={clsx(
-                                    'w-full rounded-2xl border p-6 text-left transition focus:outline-none focus:ring-2 focus:ring-indigo-500',
-                                    isSelected
-                                        ? 'border-indigo-500 shadow-lg ring-2 ring-indigo-200'
-                                        : 'border-slate-200 hover:border-indigo-200 hover:shadow'
-                                )}
-                            >
-                                <div className="flex items-start justify-between gap-3 mb-4">
-                                    <div className="flex-1">
-                                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                                            Trait {idx + 1}
-                                        </span>
-                                        <h3 className="mt-3 text-xl font-semibold text-slate-900">
-                                            {trait.trait}
-                                        </h3>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-3xl font-semibold text-slate-900">
-                                            {trait.percentile}
-                                            <span className="text-sm font-normal text-slate-500 ml-1">
-                                                percentile
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
+                {/* Current Trait Card */}
+                <div className="rounded-2xl border border-indigo-500 shadow-lg ring-2 ring-indigo-200 p-6">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                        <div className="flex-1">
+                            <span className="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
+                                Trait {currentTraitIndex + 1} of {reportData.report_content.length}
+                            </span>
+                            <h3 className="mt-3 text-xl font-semibold text-slate-900">
+                                {currentBlock.trait}
+                            </h3>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-3xl font-semibold text-slate-900">
+                                {currentBlock.percentile}
+                                <span className="text-sm font-normal text-slate-500 ml-1">
+                                    percentile
+                                </span>
+                            </p>
+                        </div>
+                    </div>
 
-                                {/* Progress Bar */}
-                                <div className="w-full bg-slate-100 rounded-full h-2 mb-4">
-                                    <div
-                                        className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                                        style={{ width: `${trait.percentile}%` }}
-                                    ></div>
-                                </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-slate-100 rounded-full h-2 mb-4">
+                        <div
+                            className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                            style={{ width: `${currentBlock.percentile}%` }}
+                        ></div>
+                    </div>
 
-                                {isSelected && (
-                                    <div className="mt-4 text-sm text-slate-600 leading-relaxed">
-                                        {trait.text.split('\n').map((paragraph, pIdx) => (
-                                            <p key={pIdx} className={pIdx === 0 ? "" : "mt-3"}>
-                                                {paragraph}
-                                            </p>
-                                        ))}
-                                    </div>
-                                )}
-                            </button>
-                        );
-                    })}
+                    {/* Trait Description */}
+                    <div className="mt-4 text-sm text-slate-600 leading-relaxed">
+                        {currentBlock.text.split('\n').map((paragraph, pIdx) => (
+                            <p key={pIdx} className={pIdx === 0 ? "" : "mt-3"}>
+                                {paragraph}
+                            </p>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Pagination Dots */}

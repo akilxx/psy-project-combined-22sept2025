@@ -107,9 +107,9 @@ export default function TestRunner() {
       <div className={wrapperCls}>
         <div className={layoutCls}>
           <div className="flex flex-1 items-center justify-center px-6">
-            <div className="max-w-xl w-full rounded-lg bg-slate-50 p-6 text-center space-y-2">
-              <h2 className="text-xl font-semibold text-slate-900">This test has been completed</h2>
-              <p className="text-slate-600">
+            <div className="max-w-xl w-full rounded-lg bg-[#EBEBEB] p-6 text-center space-y-2">
+              <h2 className="text-xl font-semibold text-black">This test has been completed</h2>
+              <p className="text-gray-700">
                 All items were answered previously. You can review your results from the dashboard.
               </p>
             </div>
@@ -321,8 +321,8 @@ export default function TestRunner() {
 
   /* Reusable chevron button styles */
   const chevronBtnBase =
-  'group p-2 text-slate-900 bg-transparent ' +
-  'disabled:text-slate-400 disabled:opacity-40 disabled:cursor-not-allowed';
+  'group p-2 text-black bg-transparent ' +
+  'disabled:text-gray-400 disabled:opacity-40 disabled:cursor-not-allowed';
 
   const renderOptions = () =>
     test.options.map(opt => {
@@ -337,10 +337,10 @@ export default function TestRunner() {
             onClick={() => handleAnswer(q.question_number, opt)}
             className={clsx(
               'w-full relative overflow-hidden whitespace-nowrap text-center py-1 px-3 sm:px-4 font-bold rounded-[10px] transition',
-
+              
               selected
-                ? 'bg-indigo-600 text-white text-sm border border-indigo-600'
-                : 'bg-slate-50 text-slate-900 text-sm hover:bg-indigo-600  hover:text-white hover:border-indigo-600',
+                ? 'bg-black text-white text-sm border border-black'
+                : 'bg-[#F7FDFF] text-black text-sm hover:bg-black  hover:text-white hover:border-black',
             )}
           >
             <span className="inline-block animate-fadeIn">{opt}</span>
@@ -358,7 +358,7 @@ export default function TestRunner() {
         <header className="px-5 sm:px-7 pt-6 pb-0">
           {/* Item pill: desktop / tablet only */}
           <div className="hidden sm:flex justify-center mb-10">
-            <h2 className="text-xl font-bold text-slate-400 inline-block bg-white px-3 py-1 rounded-[10px]">
+            <h2 className="text-xl font-bold text-[#B5B5B5] inline-block bg-[white] px-3 py-1 rounded-[10px]">
               Item {q.question_number} of {test.total_questions_number}
             </h2>
           </div>
@@ -396,7 +396,7 @@ export default function TestRunner() {
           >
             <div
               className={clsx(
-                'rounded-[10px] font-bold text-left text-slate-900 leading-snug',
+                'rounded-[10px] font-bold text-left text-black leading-snug',
                 // Mobile: dynamic size based on longest question
                 mobileQuestionSizeCls,
                 // Desktop / tablet: fixed larger size
@@ -431,8 +431,8 @@ export default function TestRunner() {
                 direction="left"
                 size={40}
                 thickness={canGoPrev ? 6 : 4}
-                color={canGoPrev ? '#4F46E5' : '#9CA3AF'}
-                hoverColor={canGoPrev ? '#6366F1' : '#9CA3AF'}
+                color={canGoPrev ? 'black' : '#9CA3AF'}
+                hoverColor={canGoPrev ? 'blue' : '#9CA3AF'}
                 scale={0.6}
                 hoverScale={0.8}
               />
@@ -466,8 +466,8 @@ export default function TestRunner() {
                 direction="right"
                 size={40}
                 thickness={canGoNext ? 6 : 4}
-                color={canGoNext ? '#4F46E5' : '#9CA3AF'}
-                hoverColor={canGoNext ? '#6366F1' : '#9CA3AF'}
+                color={canGoNext ? 'black' : '#9CA3AF'}
+                hoverColor={canGoNext ? 'blue' : '#9CA3AF'}
                 scale={0.6}
                 hoverScale={0.8}
               />
@@ -512,7 +512,7 @@ export default function TestRunner() {
                   handleSubmit();
                 }}
                 className={clsx(
-                  'tw-pad rounded-[10px] border border-indigo-600 text-sm font-bold',
+                  'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
                   !allAnswered && 'is-disabled',
                   allAnswered && 'enabled',
                   submitting && 'pointer-events-none opacity-80'
@@ -547,7 +547,7 @@ export default function TestRunner() {
                 handleSubmit();
               }}
               className={clsx(
-                'tw-pad rounded-[10px] border border-indigo-600 text-sm font-bold',
+                'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
                 !allAnswered && 'is-disabled',
                 allAnswered && 'enabled',
                 submitting && 'pointer-events-none opacity-80'

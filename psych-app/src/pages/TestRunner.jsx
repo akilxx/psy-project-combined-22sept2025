@@ -189,12 +189,23 @@ export default function TestRunner() {
 
     setAnswers(prev => {
       const updated = { ...prev, [qNum]: { answer: ans } };
-      nextIdx = findNextIdx(idx, updated);
+      
+      // Calculate completion status based on the new state
+      const isComplete = Object.keys(updated).length >= test.total_questions_number;
+
+      // Only auto-advance if the test is NOT complete
+      if (isComplete) {
+        nextIdx = idx; // Stay on current question
+      } else {
+        nextIdx = findNextIdx(idx, updated); // Find next unanswered
+      }
+
       return updated;
     });
+    
     setPendingAnswerSyncs(prev => prev + 1);
 
-    // RippleButton gates onClick until ripple ends; advance immediately here.
+    // Update index immediately based on logic above
     setIdx(nextIdx);
 
     try {

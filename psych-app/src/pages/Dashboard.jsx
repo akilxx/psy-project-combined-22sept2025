@@ -1,6 +1,5 @@
 // psych-app/src/pages/Dashboard.jsx
 import { useEffect, useState, useMemo } from 'react';
-import api from '../api/axios';
 import { listResults } from '../api/testing';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
@@ -54,7 +53,6 @@ function ReportAccessBadge({ hasReport }) {
 }
 
 export default function Dashboard() {
-  const [tests, setTests] = useState([]);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'completed', 'in_progress'
@@ -63,12 +61,6 @@ export default function Dashboard() {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Load available tests
-        api.get('/testing/tests/')
-          .then(r => setTests(r.data))
-          .catch(() => setTests([]));
-
-        // Load test results
         const response = await listResults();
         setResults(response.data);
       } catch (err) {
@@ -94,47 +86,6 @@ export default function Dashboard() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-slate-900">Dashboard</h1>
-        <p className="mt-2 max-w-2xl text-slate-600">
-          View your test results and start new assessments.
-        </p>
-      </div>
-
-      {/* Available Tests Section */}
-      <div className="mb-10 rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-semibold text-slate-900 mb-4">Available Tests</h2>
-        {tests.length === 0 ? (
-          <p className="text-sm text-slate-500">No tests available at the moment.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            {tests.map(t => (
-              <div
-                key={t.id}
-                className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-indigo-200 hover:shadow"
-              >
-                <h3 className="text-lg font-semibold text-slate-900">{t.test_name}</h3>
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    to={`/test/start/${t.id}`}
-                    className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 transition"
-                  >
-                    Standard runner
-                  </Link>
-                  <Link
-                    to={`/test/start/${t.id}/alt`}
-                    className="inline-flex items-center justify-center rounded-xl border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition"
-                  >
-                    Alternative runner
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Test Results Section */}
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">

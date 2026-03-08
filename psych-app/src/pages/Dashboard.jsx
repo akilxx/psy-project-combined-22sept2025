@@ -43,6 +43,8 @@ export default function Dashboard() {
       <style>{`
         .hide-native-scrollbar::-webkit-scrollbar { display: none; }
         .hide-native-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .hide-native-scrollbar *::-webkit-scrollbar { display: none; }
+        .hide-native-scrollbar * { -ms-overflow-style: none; scrollbar-width: none; }
         .thead-fade th { position: relative; }
         .thead-fade::after {
           content: '';
@@ -135,10 +137,10 @@ export default function Dashboard() {
 
               {/* Mobile: visible on small screens, hidden sm+ */}
               <div
-                className="flex flex-col sm:hidden flex-1 min-h-0 overflow-hidden"
+                className="flex flex-col sm:hidden flex-1 min-h-0 overflow-hidden hide-native-scrollbar"
                 style={{
-                  maskImage: 'linear-gradient(to bottom, transparent 0%, black 32px, black calc(100% - 32px), transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 32px, black calc(100% - 32px), transparent 100%)',
+                  maskImage: 'linear-gradient(to bottom, transparent 0px, black 15px, black calc(100% - 190px), rgba(0,0,0,0.5) calc(100% - 95px), transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, transparent 0px, black 15px, black calc(100% - 190px), rgba(0,0,0,0.5) calc(100% - 95px), transparent 100%)',
                 }}
               >
                 <MobileTable results={filteredResults} />

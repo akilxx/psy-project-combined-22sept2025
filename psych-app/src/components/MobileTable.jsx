@@ -1,12 +1,13 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 
 /* ─── helpers ─── */
+
 function formatDate(value) {
   if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString(undefined, {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -50,24 +51,17 @@ function ReportAccessBadge({ hasReport }) {
   );
 }
 
-/* ─── single card ─── */
-function ResultCard({ result, cardHeight }) {
+/* ─── card ─── */
+
+function ResultCard({ result, height }) {
+  const fixedStyle = height != null
+    ? { height, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }
+    : {};
+
   return (
     <div
       className="rounded-lg bg-white overflow-hidden"
-      style={{
-        border: '1px solid #dfe3e8',
-        padding: '14px 16px',
-        ...(cardHeight != null
-          ? {
-              height: cardHeight,
-              flexShrink: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-            }
-          : {}),
-      }}
+      style={{ border: '1px solid #dfe3e8', padding: '14px 16px', ...fixedStyle }}
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900 leading-snug">
@@ -128,177 +122,137 @@ function ResultCard({ result, cardHeight }) {
   );
 }
 
-/*
- * ─── LAYOUT MATH ───
- *
- * Available height = window.innerHeight − container.getBoundingClientRect().top
- * This bypasses the entire flex chain and gives us the real pixel space.
- *
- * We want: PAD + N × cardH + N × GAP + cardH/2 = availableH
- * Solve:   cardH = (availableH − PAD − N × GAP) / (N + 0.5)
- */
+/* ─── keyboard scroll handler ─── */
 
-const GAP = 12;
-const PAD = 12;
-const FADE_HEIGHT = 32;
+function handleScrollKeyDown(e) {
+  const el = e.currentTarget;
+  const smallScroll = 100;
+  const largeScroll = el.clientHeight * 0.9;
+
+  const keyActions = {
+    ArrowDown: smallScroll,
+    ArrowUp: -smallScroll,
+    PageDown: largeScroll,
+    PageUp: -largeScroll,
+    ' ': e.shiftKey ? -largeScroll : largeScroll,
+    Home: 'top',
+    End: 'bottom',
+  };
+
+  const action = keyActions[e.key];
+  if (action !== undefined) {
+    e.preventDefault();
+    if (action === 'top') {
+      el.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (action === 'bottom') {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollBy({ top: action, behavior: 'smooth' });
+    }
+  }
+}
+
+/* ─── layout constants ─── */
+
+const GAP = 32;
+const PADDING = 32;
+const TOP_FADE = 55;
+
+
+/* ─── main component ─── */
 
 export default function MobileTable({ results }) {
-  const wrapperRef = useRef(null);
-  const measureRef = useRef(null);
-  const scrollRef = useRef(null);
-  const [cardHeight, setCardHeight] = useState(null);
-  const [containerH, setContainerH] = useState(null);
-  const [scrollPos, setScrollPos] = useState({ atTop: true, atBottom: false });
+  const containerRef = useRef(null);
+  const probeRef = useRef(null);
+  const [layout, setLayout] = useState(null);
+
+  const measure = useCallback(() => {
+    const container = containerRef.current;
+    const probe = probeRef.current;
+    if (!container || !probe) return;
+
+    const available = window.innerHeight - container.getBoundingClientRect().top;
+    if (available <= 0) return;
+
+    const naturalHeight = probe.getBoundingClientRect().height;
+    if (naturalHeight <= 0) return;
+
+    const fullCards = Math.max(Math.floor((available - PADDING) / (naturalHeight + GAP)), 1);
+    const cardHeight = (available - PADDING - fullCards * GAP) / (fullCards + 0.5);
+
+    setLayout({ cardHeight, containerHeight: available });
+  }, []);
 
   useEffect(() => {
-    function compute() {
-      const wrapper = wrapperRef.current;
-      const measureCard = measureRef.current;
-      if (!wrapper || !measureCard) return;
-
-      // Get real available pixels: from this element's top to the bottom of the screen
-      const top = wrapper.getBoundingClientRect().top;
-      const available = window.innerHeight - top;
-
-      if (available <= 0) return;
-
-      // Measure natural card height from the hidden card
-      const naturalH = measureCard.getBoundingClientRect().height;
-      if (naturalH <= 0) return;
-
-      // How many full cards fit at natural size?
-      const step = naturalH + GAP;
-      const n = Math.max(Math.floor((available - PAD) / step), 1);
-
-      // Solve for card height that makes N + 0.5 cards fill exactly
-      const h = (available - PAD - n * GAP) / (n + 0.5);
-
-      setCardHeight(h);
-      setContainerH(available);
-    }
-
-    // Wait for layout to settle
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(compute);
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(measure);
     });
 
-    window.addEventListener('resize', compute);
+    window.addEventListener('resize', measure);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', compute);
+      window.removeEventListener('resize', measure);
     };
-  }, [results]);
+  }, [measure, results]);
 
-  /* Track scroll position to show/hide fades */
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    function onScroll() {
-      const atTop = el.scrollTop <= 2;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
-      setScrollPos({ atTop, atBottom });
-    }
-
-    // Re-check after layout settles (cardHeight may have changed DOM sizes)
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(onScroll);
-    });
-
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      el.removeEventListener('scroll', onScroll);
-    };
-  }, [results, cardHeight]);
+  const cardHeight = layout?.cardHeight ?? null;
+  const containerHeight = layout?.containerHeight ?? null;
 
   return (
     <div
-      ref={wrapperRef}
+      ref={containerRef}
       style={{
         position: 'relative',
-        height: containerH != null ? containerH : '100%',
+        height: containerHeight ?? '100%',
         overflow: 'hidden',
         flex: '1 1 0%',
         minHeight: 0,
+        /* Top fade only via mask — bottom is handled by the overlay */
+        maskImage: `linear-gradient(to bottom, transparent 0px, black ${TOP_FADE}px, black 100%)`,
+        WebkitMaskImage: `linear-gradient(to bottom, transparent 0px, black ${TOP_FADE}px, black 100%)`,
       }}
     >
-      {/* Hidden measure card — always at natural height */}
+      {/* Hidden probe card rendered at natural height for measurement */}
       {results.length > 0 && (
         <div
-          ref={measureRef}
+          ref={probeRef}
           aria-hidden="true"
           style={{
             position: 'absolute',
             visibility: 'hidden',
             pointerEvents: 'none',
-            left: PAD,
-            right: PAD,
+            left: PADDING,
+            right: PADDING,
             top: 0,
             zIndex: -1,
           }}
         >
-          <ResultCard result={results[0]} cardHeight={undefined} />
+          <ResultCard result={results[0]} height={undefined} />
         </div>
       )}
 
-      {/* Top fade */}
+      {/* Scrollable card list */}
       <div
-        aria-hidden="true"
+        tabIndex={0}
+        onKeyDown={handleScrollKeyDown}
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: FADE_HEIGHT,
-          background: 'linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0) 100%)',
-          pointerEvents: 'none',
-          zIndex: 2,
-          opacity: scrollPos.atTop ? 0 : 1,
-          transition: 'opacity 200ms ease',
-        }}
-      />
-
-      {/* Bottom fade */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: FADE_HEIGHT,
-          background: 'linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0) 100%)',
-          pointerEvents: 'none',
-          zIndex: 2,
-          opacity: scrollPos.atBottom ? 0 : 1,
-          transition: 'opacity 200ms ease',
-        }}
-      />
-
-      {/* Scrollable list */}
-      <div
-        ref={scrollRef}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
+          inset: 0,
           overflowY: 'auto',
           overscrollBehavior: 'contain',
-          WebkitOverflowScrolling: 'touch',
-          padding: `${PAD}px ${PAD}px 0`,
+          padding: `${PADDING}px ${PADDING}px 0`,
+          outline: 'none',
         }}
       >
         {results.map((result) => (
           <div key={result.uuid} style={{ marginBottom: GAP }}>
-            <ResultCard result={result} cardHeight={cardHeight} />
+            <ResultCard result={result} height={cardHeight} />
           </div>
         ))}
-        {/* Spacer so the last card can be fully scrolled into view */}
-        <div style={{ height: cardHeight != null ? cardHeight * 0.5 + PAD : 16 }} />
+        {/* Tail spacer — lets the last card scroll fully into view */}
+        <div style={{ height: cardHeight != null ? cardHeight * 0.5 + PADDING : 16 }} />
       </div>
+
     </div>
   );
 }

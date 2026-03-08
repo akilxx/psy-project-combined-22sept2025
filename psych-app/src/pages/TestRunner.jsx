@@ -17,6 +17,7 @@ import { parseProgressString } from '../utils/progress';
 import ProgressBar from '../components/ProgressBar';
 import ProgressBarMobile from '../components/ProgressBarMobile';
 import RippleButton from '../components/RippleButton';
+import Navbar from '../components/Navbar';
 
 export default function TestRunner() {
   const { resultId } = useParams();
@@ -90,7 +91,7 @@ export default function TestRunner() {
   const handleSeek = useCallback((newIdx) => setIdx(newIdx), []);
 
   /* Helpers: same wrapper + card classes for all branches */
-  const wrapperCls = 'pt-4 px-2 flex justify-center';
+  const wrapperCls = 'flex-1 pt-4 px-2 flex justify-center';
   const layoutCls = `
     relative mx-auto flex w-full max-w-[90vw] max-h-[95vh] flex-col
     h-[calc(100vh-3.5rem-2rem)]      /* ~navbar + top/bottom gutters */
@@ -100,18 +101,22 @@ export default function TestRunner() {
   const contentMaxWCls = 'w-full max-w-5xl mx-auto';
   const sidePadCls = 'px-5 sm:px-16';
   const mobileSidePadCls = 'px-5';
+  
 
   /* ---------- completed-test view ---------- */
   if (!inProgress && test) {
     return (
-      <div className={wrapperCls}>
-        <div className={layoutCls}>
-          <div className="flex flex-1 items-center justify-center px-6">
-            <div className="max-w-xl w-full rounded-lg bg-[#EBEBEB] p-6 text-center space-y-2">
-              <h2 className="text-xl font-semibold text-black">This test has been completed</h2>
-              <p className="text-gray-700">
-                All items were answered previously. You can review your results from the dashboard.
-              </p>
+      <div className="flex flex-col h-screen overflow-hidden">
+        <Navbar />
+        <div className={wrapperCls}>
+          <div className={layoutCls}>
+            <div className="flex flex-1 items-center justify-center px-6">
+              <div className="max-w-xl w-full rounded-[7px] bg-[#EBEBEB] p-6 text-center space-y-2">
+                <h2 className="text-xl font-semibold text-black">This test has been completed</h2>
+                <p className="text-gray-700">
+                  All items were answered previously. You can review your results from the dashboard.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -122,23 +127,26 @@ export default function TestRunner() {
   /* ---------- loading skeleton ---------- */
   if (!test || idx === null) {
     return (
-      <div className={wrapperCls}>
-        <div className={layoutCls}>
-          {/* invisible scaffold */}
-          <div className="px-6 pt-6 pb-0 invisible">
-            <div className="h-4 w-4/5 md:w-7/8 mb-6 bg-transparent" />
-          </div>
-          <div className="px-7 pt-0 pb-6 space-y-6 invisible">
-            <div className="h-[120px] bg-transparent" />
-            <div className="h-[240px] bg-transparent" />
-          </div>
-          <div className="px-7 pt-6 pb-6 invisible">
-            <div className="h-10 bg-transparent" />
-          </div>
+      <div className="flex flex-col h-screen overflow-hidden">
+        <Navbar />
+        <div className={wrapperCls}>
+          <div className={layoutCls}>
+            {/* invisible scaffold */}
+            <div className="px-6 pt-6 pb-0 invisible">
+              <div className="h-4 w-4/5 md:w-7/8 mb-6 bg-transparent" />
+            </div>
+            <div className="px-7 pt-0 pb-6 space-y-6 invisible">
+              <div className="h-[120px] bg-transparent" />
+              <div className="h-[240px] bg-transparent" />
+            </div>
+            <div className="px-7 pt-6 pb-6 invisible">
+              <div className="h-10 bg-transparent" />
+            </div>
 
-          {/* centred spinner */}
-          <div className="absolute inset-0 grid place-items-center">
-            <div role="status" aria-label="Loading" className="loader" />
+            {/* centred spinner */}
+            <div className="absolute inset-0 grid place-items-center">
+              <div role="status" aria-label="Loading" className="loader" />
+            </div>
           </div>
         </div>
       </div>
@@ -347,11 +355,11 @@ export default function TestRunner() {
           <RippleButton
             onClick={() => handleAnswer(q.question_number, opt)}
             className={clsx(
-              'w-full relative overflow-hidden whitespace-nowrap text-center py-1 px-3 sm:px-4 font-bold rounded-[10px] transition',
+              'w-full relative overflow-hidden whitespace-nowrap text-center py-1 px-3 sm:px-4 font-bold rounded-[7px] transition',
               
               selected
-                ? 'bg-[#5C97EC] text-white text-sm '
-                : 'bg-[#F7FDFF] text-black text-sm hover:bg-[#5C97EC] hover:text-white hover:border-black',
+                ? 'bg-[#210AA1] text-white text-sm '
+                : 'bg-[#F1F5F9] text-[#4B587C] text-sm hover:bg-[#210AA1] hover:text-white hover:border-black',
             )}
           >
             <span className="inline-block animate-fadeIn">{opt}</span>
@@ -363,154 +371,191 @@ export default function TestRunner() {
 
   /* ---------- live render ---------- */
   return (
-    <div className={wrapperCls}>
-      <div className={layoutCls}>
-        {/* header */}
-        <header className="px-5 sm:px-7 pt-6 pb-0">
-          {/* Item pill: desktop / tablet only */}
-          <div className="hidden sm:flex justify-center mb-10">
-            <h2 className="text-xl font-bold text-[#B5B5B5] inline-block bg-[white] px-3 py-1 rounded-[10px]">
-              Item {q.question_number} of {test.total_questions_number}
-            </h2>
-          </div>
-
-          {/* Progress aligned to content width */}
-          <div className={clsx(contentMaxWCls, sidePadCls)}>
-            {/* Desktop / tablet */}
-            <div className="hidden sm:block">
-              <ProgressBar
-                current={Object.keys(answers).length}
-                total={test.total_questions_number}
-                idx={idx}
-                maxIdx={liveIdx}
-                onSeek={firstAnswered ? handleSeek : () => {}}
-                disabled={!firstAnswered}
-              />
+    <div className="flex flex-col h-screen overflow-hidden">
+      <Navbar />
+      <div className={wrapperCls}>
+        <div className={layoutCls}>
+          {/* header */}
+          <header className="px-5 sm:px-7 pt-6 pb-0">
+            {/* Item pill: desktop / tablet only */}
+            <div className="hidden sm:flex justify-center mb-10">
+              <h2 className="text-xl font-bold text-[#B5B5B5] inline-block bg-[white] px-3 py-1 rounded-[7px]">
+                Item {q.question_number} of {test.total_questions_number}
+              </h2>
             </div>
-            
-          </div>
-        </header>
 
-        {/* body */}
-        <section className="px-5 sm:px-7 pt-10 pb-0">
+            {/* Progress aligned to content width */}
+            <div className={clsx(contentMaxWCls, sidePadCls)}>
+              {/* Desktop / tablet */}
+              <div className="hidden sm:block">
+                <ProgressBar
+                  current={Object.keys(answers).length}
+                  total={test.total_questions_number}
+                  idx={idx}
+                  maxIdx={liveIdx}
+                  onSeek={firstAnswered ? handleSeek : () => {}}
+                  disabled={!firstAnswered}
+                />
+              </div>
+              
+            </div>
+          </header>
 
-          {error && (
-            <p className="text-red-600 text-center mb-4">
-              {error}
-            </p>
-          )}
+          {/* body */}
+          <section className="px-5 sm:px-7 pt-10 pb-0">
 
-          {/* Question text aligned to grid */}
-          <div
-            key={`qtxt-${q.question_number}`}
-            className={clsx(contentMaxWCls, sidePadCls, 'mb-10 animate-fadeIn')}
-          >
+            {error && (
+              <p className="text-red-600 text-center mb-4">
+                {error}
+              </p>
+            )}
+
+            {/* Question text aligned to grid */}
+            <div
+              key={`qtxt-${q.question_number}`}
+              className={clsx(contentMaxWCls, sidePadCls, 'mb-10 animate-fadeIn')}
+            >
+              <div
+                className={clsx(
+                  'rounded-[7px] font-bold text-left text-black leading-snug',
+                  // Mobile: dynamic size based on longest question
+                  mobileQuestionSizeCls,
+                  // Desktop / tablet: fixed larger size
+                  'sm:text-2xl',
+                  // Mobile: fixed 2-line block to keep layout stable
+                  'h-[4.5rem] sm:h-auto flex items-center'
+                )}
+              >
+                <span>{`${q.question_number}. ${q.text}`}</span>
+              </div>
+            </div>
+
+
+
+            {/* answer grid + chevrons */}
+            <div className="relative w-full">
+              {/* LEFT chevron */}
+              <button
+                onClick={goPrev}
+                disabled={!canGoPrev}
+                className={clsx(
+                  chevronBtnBase,
+                  'inline-flex absolute top-1/2 -translate-y-1/2 z-10',
+                  // Mobile: push closer to viewport edge, away from options
+                  'left-0 -translate-x-4',
+                  // sm+: align with content container
+                  'sm:left-0 sm:translate-x-0'
+                )}
+                aria-label="Previous answered item"
+              >
+                <Chevron
+                  direction="left"
+                  size={40}
+                  thickness={canGoPrev ? 6 : 4}
+                  color={canGoPrev ? 'black' : '#9CA3AF'}
+                  hoverColor={canGoPrev ? 'blue' : '#9CA3AF'}
+                  scale={0.6}
+                  hoverScale={0.8}
+                />
+              </button>
+
+              <div
+                className={clsx(
+                  contentMaxWCls,
+                  sidePadCls,
+                  'grid grid-cols-1 gap-3 justify-items-center sm:justify-items-stretch sm:grid-cols-2 lg:grid-cols-3'
+                )}
+              >
+                {renderOptions()}
+              </div>
+
+              {/* RIGHT chevron */}
+              <button
+                onClick={goNext}
+                disabled={!canGoNext}
+                className={clsx(
+                  chevronBtnBase,
+                  'inline-flex absolute top-1/2 -translate-y-1/2 z-10',
+                  // Mobile: push closer to viewport edge, away from options
+                  'right-0 translate-x-4',
+                  // sm+: align with content container
+                  'sm:right-0 sm:translate-x-0'
+                )}
+                aria-label="Next answered item"
+              >
+                <Chevron
+                  direction="right"
+                  size={40}
+                  thickness={canGoNext ? 6 : 4}
+                  color={canGoNext ? 'black' : '#9CA3AF'}
+                  hoverColor={canGoNext ? 'blue' : '#9CA3AF'}
+                  scale={0.6}
+                  hoverScale={0.8}
+                />
+              </button>
+            </div>
+
+          </section>
+
+          {/* footer — equal gap below answers, aligned to grid */}
+          <footer className="px-5 sm:px-7 pb-6 mt-12 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0 flex flex-col flex-1 sm:flex-none">
+            {/* Mobile: submit + progress below */}
             <div
               className={clsx(
-                'rounded-[10px] font-bold text-left text-black leading-snug',
-                // Mobile: dynamic size based on longest question
-                mobileQuestionSizeCls,
-                // Desktop / tablet: fixed larger size
-                'sm:text-2xl',
-                // Mobile: fixed 2-line block to keep layout stable
-                'h-[4.5rem] sm:h-auto flex items-center'
+                contentMaxWCls,
+                mobileSidePadCls,
+                'sm:hidden flex w-full flex-1 flex-col items-center'
               )}
             >
-              <span>{`${q.question_number}. ${q.text}`}</span>
+              <div className="w-full mt-8 mb-6 sm:mt-0 sm:mb-0">
+                <ProgressBarMobile
+                  current={Object.keys(answers).length}
+                  total={test.total_questions_number}
+                  idx={idx}
+                  maxIdx={liveIdx}
+                  onSeek={firstAnswered ? handleSeek : () => {}}
+                  disabled={!firstAnswered}
+                />
+              </div>
+
+              <div className="pt-8 mt-6 self-center">
+                <AnimatedSubmitButton
+                  key={`submit-mobile-${submitAttempt}`}
+                  onClick={(e) => {
+                    if (!allAnswered) {
+                      e.preventDefault();
+                      return;
+                    }
+                    if (submitting) {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleSubmit();
+                  }}
+                  className={clsx(
+                    'tw-pad rounded-[7px] border border-[#43B384] text-sm font-bold',
+                    !allAnswered && 'is-disabled',
+                    allAnswered && 'enabled',
+                    submitting && 'pointer-events-none opacity-80'
+                  )}
+                  submitting={submitting}
+                  preloading={preloading}
+                  labels={['Submit', 'Submitting']}
+                />
+              </div>
             </div>
-          </div>
 
 
-
-          {/* answer grid + chevrons */}
-          <div className="relative w-full">
-            {/* LEFT chevron */}
-            <button
-              onClick={goPrev}
-              disabled={!canGoPrev}
-              className={clsx(
-                chevronBtnBase,
-                'inline-flex absolute top-1/2 -translate-y-1/2 z-10',
-                // Mobile: push closer to viewport edge, away from options
-                'left-0 -translate-x-4',
-                // sm+: align with content container
-                'sm:left-0 sm:translate-x-0'
-              )}
-              aria-label="Previous answered item"
-            >
-              <Chevron
-                direction="left"
-                size={40}
-                thickness={canGoPrev ? 6 : 4}
-                color={canGoPrev ? 'black' : '#9CA3AF'}
-                hoverColor={canGoPrev ? 'blue' : '#9CA3AF'}
-                scale={0.6}
-                hoverScale={0.8}
-              />
-            </button>
-
+            {/* Desktop / tablet */}
             <div
               className={clsx(
                 contentMaxWCls,
                 sidePadCls,
-                'grid grid-cols-1 gap-3 justify-items-center sm:justify-items-stretch sm:grid-cols-2 lg:grid-cols-3'
+                'hidden sm:flex justify-center'
               )}
             >
-              {renderOptions()}
-            </div>
-
-            {/* RIGHT chevron */}
-            <button
-              onClick={goNext}
-              disabled={!canGoNext}
-              className={clsx(
-                chevronBtnBase,
-                'inline-flex absolute top-1/2 -translate-y-1/2 z-10',
-                // Mobile: push closer to viewport edge, away from options
-                'right-0 translate-x-4',
-                // sm+: align with content container
-                'sm:right-0 sm:translate-x-0'
-              )}
-              aria-label="Next answered item"
-            >
-              <Chevron
-                direction="right"
-                size={40}
-                thickness={canGoNext ? 6 : 4}
-                color={canGoNext ? 'black' : '#9CA3AF'}
-                hoverColor={canGoNext ? 'blue' : '#9CA3AF'}
-                scale={0.6}
-                hoverScale={0.8}
-              />
-            </button>
-          </div>
-
-        </section>
-
-        {/* footer — equal gap below answers, aligned to grid */}
-        <footer className="px-5 sm:px-7 pb-6 mt-12 sm:mt-20 lg:mt-28 space-y-4 sm:space-y-0 flex flex-col flex-1 sm:flex-none">
-          {/* Mobile: submit + progress below */}
-          <div
-            className={clsx(
-              contentMaxWCls,
-              mobileSidePadCls,
-              'sm:hidden flex w-full flex-1 flex-col items-center'
-            )}
-          >
-            <div className="w-full mt-8 mb-6 sm:mt-0 sm:mb-0">
-              <ProgressBarMobile
-                current={Object.keys(answers).length}
-                total={test.total_questions_number}
-                idx={idx}
-                maxIdx={liveIdx}
-                onSeek={firstAnswered ? handleSeek : () => {}}
-                disabled={!firstAnswered}
-              />
-            </div>
-
-            <div className="pt-8 mt-6 self-center">
               <AnimatedSubmitButton
-                key={`submit-mobile-${submitAttempt}`}
+                key={`submit-desktop-${submitAttempt}`}
                 onClick={(e) => {
                   if (!allAnswered) {
                     e.preventDefault();
@@ -523,7 +568,7 @@ export default function TestRunner() {
                   handleSubmit();
                 }}
                 className={clsx(
-                  'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
+                  'tw-pad rounded-[7px] border border-[#43B384] text-sm font-bold',
                   !allAnswered && 'is-disabled',
                   allAnswered && 'enabled',
                   submitting && 'pointer-events-none opacity-80'
@@ -533,49 +578,15 @@ export default function TestRunner() {
                 labels={['Submit', 'Submitting']}
               />
             </div>
-          </div>
 
-
-          {/* Desktop / tablet */}
-          <div
-            className={clsx(
-              contentMaxWCls,
-              sidePadCls,
-              'hidden sm:flex justify-center'
+            {submitError && (
+              <p className="text-center text-sm text-red-600" role="alert">
+                {submitError}
+              </p>
             )}
-          >
-            <AnimatedSubmitButton
-              key={`submit-desktop-${submitAttempt}`}
-              onClick={(e) => {
-                if (!allAnswered) {
-                  e.preventDefault();
-                  return;
-                }
-                if (submitting) {
-                  e.preventDefault();
-                  return;
-                }
-                handleSubmit();
-              }}
-              className={clsx(
-                'tw-pad rounded-[10px] border border-[#43B384] text-sm font-bold',
-                !allAnswered && 'is-disabled',
-                allAnswered && 'enabled',
-                submitting && 'pointer-events-none opacity-80'
-              )}
-              submitting={submitting}
-              preloading={preloading}
-              labels={['Submit', 'Submitting']}
-            />
-          </div>
+          </footer>
 
-          {submitError && (
-            <p className="text-center text-sm text-red-600" role="alert">
-              {submitError}
-            </p>
-          )}
-        </footer>
-
+        </div>
       </div>
     </div>
   );

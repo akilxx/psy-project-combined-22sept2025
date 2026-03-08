@@ -8,10 +8,10 @@ export default function AnimatedSubmitButton({
   duration = 1500,
   labels = ["Submit", "Submitting"],
   className = "",
-  submittedBg = "#338764",      // 🔵 color to use AFTER it slides to "Submitting"
-  submittedDelay = 250,         // ms delay so color change happens after the text slide
+  submittedBg = "#DCFCE7",
+  submittedDelay = 250,
 }) {
-  const [state, setState] = useState("idle"); // 'idle' | 'downloading'
+  const [state, setState] = useState("idle");
 
   const handleClick = (e) => {
     e.preventDefault();
@@ -48,13 +48,12 @@ export default function AnimatedSubmitButton({
 
 const css = `
 .button {
-  --background: #10B982;
-  --success: #338764; 
-  --text: #fff;
+  --background: #DCFCE7;
+  --success: #DCFCE7;
+  --text: #16803D;
   --arrow: #fff;
   --checkmark: #fff;
   --shadow: rgba(10, 22, 50, .24);
-  
 
   display: inline-flex;
   align-items: stretch;
@@ -62,14 +61,13 @@ const css = `
   text-decoration: none;
   -webkit-mask-image: -webkit-radial-gradient(white, black);
   background: var(--background);
+  border: none;
   border-radius: 8px;
   transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease;
   box-shadow: 0 6px 16px var(--shadow);
   user-select: none;
-  
 }
 .button:active { transform: scale(.95); }
-
 
 /* Loading (disabled) state with full-button blinking background */
 .button.preloading {
@@ -77,19 +75,19 @@ const css = `
   --text: #000000ff;
   cursor: not-allowed;
   pointer-events: none;
-  border: 1px solid transparent !important;
+  border: none !important;
   animation: blink 1s ease-in-out infinite;
 }
 
-/* After it has slid to “Submitting”: switch background to submitted blue, after a slight delay */
+/* After it has slid to "Submitting": switch background to submitted color, after a slight delay */
 .button[data-state="downloading"] {
-  --background: var(--submitted-bg, #338764);
+  --background: var(--submitted-bg, #DCFCE7);
   transition-delay: var(--submitted-delay, 250ms);
 }
 
-/* 🔵 Hover turns blue only while "active" (not yet downloading) */
+/* Hover: slightly darker shade of #DCFCE7 */
 .button:not([data-state="downloading"]):hover {
-  --background: #338764; /* blue on hover */
+  --background: #C4F0D0;
 }
 
 /* text stack */
@@ -110,8 +108,7 @@ const css = `
 }
 .button ul li:nth-child(2) { top: 52px; }
 
-
-/* Slide to “Submitting” */
+/* Slide to "Submitting" */
 .button[data-state="downloading"] ul {
   transition: transform 250ms linear;
   transform: translateY(-100%);

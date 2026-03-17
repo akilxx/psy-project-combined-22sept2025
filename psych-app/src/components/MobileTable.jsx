@@ -164,6 +164,7 @@ const TOP_FADE = 55;
 export default function MobileTable({ results }) {
   const containerRef = useRef(null);
   const probeRef = useRef(null);
+  const scrollRef = useRef(null);
   const [layout, setLayout] = useState(null);
 
   const measure = useCallback(() => {
@@ -194,6 +195,14 @@ export default function MobileTable({ results }) {
       window.removeEventListener('resize', measure);
     };
   }, [measure, results]);
+
+  // Auto-focus the scrollable div once layout is measured so keyboard
+  // navigation works without requiring a click first
+  useEffect(() => {
+    if (layout && scrollRef.current) {
+      scrollRef.current.focus({ preventScroll: true });
+    }
+  }, [layout]);
 
   const cardHeight = layout?.cardHeight ?? null;
   const containerHeight = layout?.containerHeight ?? null;
@@ -233,6 +242,7 @@ export default function MobileTable({ results }) {
 
       {/* Scrollable card list */}
       <div
+        ref={scrollRef}
         tabIndex={0}
         onKeyDown={handleScrollKeyDown}
         style={{

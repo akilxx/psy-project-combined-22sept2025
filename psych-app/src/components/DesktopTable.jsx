@@ -140,7 +140,7 @@ function SwiperScrollbar({ scrollRef }) {
 
   const thumbHeight = Math.max(thumbRatio * trackHeight, 30);
   const maxTop = trackHeight - thumbHeight;
-  const thumbTopPx = scrollRatio * maxTop;
+  const thumbTopPx = Math.max(0, scrollRatio * maxTop);
 
   return (
     <div
@@ -260,11 +260,11 @@ export default function DesktopTable({ results }) {
             </tr>
           </thead>
           <tbody>
-            {results.map((result) => (
+            {results.map((result, index) => (
               <tr
                 key={result.uuid}
                 className="hover:bg-slate-50 transition"
-                style={{ borderBottom: '1px solid #dfe3e8' }}
+                style={index < results.length - 1 ? { borderBottom: '1px solid #dfe3e8' } : {}}
               >
                 <td className="py-4 px-4 text-sm font-medium text-slate-900">
                   {result.test_name || 'Unknown Test'}

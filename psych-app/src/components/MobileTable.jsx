@@ -147,7 +147,7 @@ function handleScrollKeyDown(e) {
     } else if (action === 'bottom') {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     } else {
-      el.scrollBy({ top: action, behavior: 'smooth' });
+      el.scrollBy({ top: action, behavior: 'instant' });
     }
   }
 }

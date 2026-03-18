@@ -150,15 +150,14 @@ function SwiperScrollbar({ scrollRef }) {
       onMouseLeave={() => setIsHovered(false)}
       style={{
         position: 'absolute',
-        top: 0,
+        top: 40,
         right: 0,
         bottom: 0,
         width: 12,
-        background: '#e8e8e8',
+        background: isDragging || isHovered ? '#F1F5F9' : 'rgba(241,245,249,0.7)',
         cursor: 'pointer',
         zIndex: 20,
         transition: 'opacity 0.2s',
-        opacity: isDragging || isHovered ? 1 : 0.7,
       }}
     >
       <div
@@ -170,13 +169,9 @@ function SwiperScrollbar({ scrollRef }) {
           left: 0,
           right: 0,
           height: thumbHeight,
-          background: isDragging
-            ? 'rgba(0,0,0,0.55)'
-            : isHovered
-            ? 'rgba(0,0,0,0.45)'
-            : 'rgba(0,0,0,0.35)',
+          background: '#210AA1',
           cursor: 'grab',
-          transition: isDragging ? 'none' : 'background 0.15s',
+          transition: 'none',
           userSelect: 'none',
         }}
       />
